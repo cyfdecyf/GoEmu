@@ -74,18 +74,19 @@ func parseModRM(b byte) (mod, reg, rm int) {
 	return
 }
 
+var buf1 = make([]byte, 1)
+
 // Get the next byte in the instrucion stream
 func (dc *DisContext) getNextByte() byte {
-	b := make([]byte, 1)
-	_, err := dc.binary.ReadAt(b, dc.offset)
+	_, err := dc.binary.ReadAt(buf1, dc.offset)
 	if err != nil {
 		panic(err)
 	}
 
 	dc.offset++
-	dc.Raw[dc.Size] = b[0]
+	dc.Raw[dc.Size] = buf1[0]
 	dc.Size++
-	return b[0]
+	return buf1[0]
 }
 
 // Put back the previously read byte
