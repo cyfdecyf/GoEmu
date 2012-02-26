@@ -18,6 +18,7 @@ var insnName = [...]string{
 	OpPush: "push",
 	OpLea:  "lea",
 	OpRet:  "ret",
+	OpInc:  "inc",
 }
 
 var regName = [...]string{
@@ -38,11 +39,11 @@ var regName8 = [...]string{
 	Ebx: "bl",
 }
 
-type insnDumper func(*DisContext) string
+type insnDumper func(string, *Instrucion) string
 
 var opcodeDumper = [...]insnDumper{
-	// mov
 	OpMov: dumpMov,
+	OpInc: dumpInc,
 }
 
 // Return the string name of a register
@@ -65,22 +66,27 @@ func formatRegister(reg, size int) (name string) {
 	return
 }
 
-func (dc *DisContext) DumpInsn() string {
-	dumper := opcodeDumper[dc.Opcode]
+func DumpInsn(insn *Instrucion) string {
+	dumper := opcodeDumper[insn.Opcode]
+	name := insnName[insn.Opcode]
 	if dumper == nil {
-		return insnName[dc.Opcode]
+		return name
 	}
-	return dumper(dc)
+	return dumper(name, insn)
 }
 
-func dumpMov(dc *DisContext) (dump string) {
-	switch dc.Raw[0] {
+func dumpMov(name string, insn *Instrucion) (dump string) {
+	switch insn.Raw[0] {
 	// Copies the second operand (source operand) to the first operand
 	// (destination operand).
 	case 0x88, 0x89, 0x8a, 0x8b:
-		dump = fmt.Sprintf("%s %s,%s", insnName[dc.Opcode],
-			formatRegister(dc.Operand2, opSizeLong),
-			formatRegister(dc.Operand1, opSizeLong))
+		dump = fmt.Sprintf("%s %s,%s", name,
+			formatRegister(insn.Operand2, opSizeLong),
+			formatRegister(insn.Operand1, opSizeLong))
 	}
 	return
+}
+
+func dumpInc(name string, insn *Instrucion) (dump string) {
+	return name + " " + formatRegister(insn.Operand1, opSizeLong)
 }

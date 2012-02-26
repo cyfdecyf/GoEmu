@@ -92,9 +92,27 @@ func TestDumpMove(t *testing.T) {
 		t.Errorf("Mod not correct, get 0x%x", dc.Mod)
 	}
 
-	dump := dc.DumpInsn()
+	dump := DumpInsn(&dc.Instrucion)
 	fmt.Println(dump)
 	if dump != "mov %esp,%ebp" {
-		t.Errorf("Move dump not correct, get: %s", dump)
+		t.Errorf("Mov dump not correct, get: %s", dump)
+	}
+}
+
+func TestDumpInc(t *testing.T) {
+	var dc DisContext
+	// mov %esp,%ebp
+	dc.binary = SliceReader([]byte{ 0x40 })
+	dc.offset = 0
+
+	dc.NextInsn()
+	if dc.Opcode != OpInc {
+		t.Error("Opcode Inc not recognised")
+	}
+
+	dump := DumpInsn(&dc.Instrucion)
+	fmt.Println(dump)
+	if dump != "inc %eax" {
+		t.Errorf("Inc dump not correct, get: %s", dump)
 	}
 }

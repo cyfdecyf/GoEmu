@@ -6,9 +6,10 @@ import (
 
 const (
 	OpAdd = iota
-	OpMov
+	OpInc
 	OpPush
 	OpPop
+	OpMov
 	OpLea
 	OpRet
 )
@@ -26,6 +27,16 @@ var opcodeParser = [...]parseOp{
 	0x80: parseAdd,
 	0x81: parseAdd,
 	0x83: parseAdd,
+
+	// inc
+	0x40: parseInc,
+	0x41: parseInc,
+	0x42: parseInc,
+	0x43: parseInc,
+	0x44: parseInc,
+	0x45: parseInc,
+	0x46: parseInc,
+	0x47: parseInc,
 
 	// push
 	0x50: parsePush,
@@ -71,6 +82,11 @@ func (dc *DisContext) parseOpcode() {
 	b := dc.getNextByte()
 	parseFunc := opcodeParser[b]
 	parseFunc(b, dc)
+}
+
+func parseInc(b byte, dc *DisContext) {
+	dc.Opcode = OpInc
+	dc.Operand1 = int(b) - 0x40
 }
 
 func parsePush(b byte, dc *DisContext) {
