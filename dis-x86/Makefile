@@ -1,9 +1,15 @@
 include $(GOROOT)/src/Make.inc
 
-TARG=cyfdecyf/dis
+TARG=github.com/cyfdecyf/goemu/dis
 
 GOFILES=\
 	dis.go\
-	prefix.go
+	prefix.go\
+	opcode.go\
+	dump.go
 
 include $(GOROOT)/src/Make.pkg
+
+GOFMT=gofmt
+fmt:
+	${GOFMT} -w ${GOFILES}

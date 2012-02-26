@@ -1,69 +1,63 @@
 package dis
 
-// Instruction prefixes. From Intel manual 2A, Section 2.1.1
+// Instruction Prefixes. From Intel manual 2A, Section 2.1.1
 const (
 	// Group 1
-	// Lock and repeat prefixes
-	prefixLOCK = 1 << iota
-	prefixREPNZ
-	prefixREPZ
+	// Lock and repeat Prefixes
+	PrefixLOCK = 1 << iota
+	PrefixREPNZ
+	PrefixREPZ
 
 	// Group 2
-	// Segment override prefixes (use with any branch instruction is reserved)
-	prefixCS
-	prefixSS
-	prefixDS
-	prefixES
-	prefixFS
-	prefixGS
+	// Segment override Prefixes (use with any branch instruction is reserved)
+	PrefixCS
+	PrefixSS
+	PrefixDS
+	PrefixES
+	PrefixFS
+	PrefixGS
 	// Branch hints:
 	// Listed separately below
 
 	// Group 3
 	// Operand-size override
-	prefixOPSIZE
+	PrefixOPSIZE
 
 	// Group 4
 	// Address override
-	prefixADDR
+	PrefixADDR
 )
 
-// Branch hints prefix, in group 2
+// Branch hints Prefix, in group 2
 const (
-	prefixNotaken = prefixCS
-	prefixTaken = prefixDS
+	PrefixNotaken = PrefixCS
+	PrefixTaken   = PrefixDS
 )
 
-var prefix = map[byte]int {
+var Prefix = map[byte]int{
 	// Group 1
-	0xF0: prefixLOCK,
-	0xF2: prefixREPNZ,
-	0xF3: prefixREPZ,
+	0xf0: PrefixLOCK,
+	0xf2: PrefixREPNZ,
+	0xf3: PrefixREPZ,
 	// Group 2
-	0x2E: prefixCS,
-	0x36: prefixSS,
-	0x3E: prefixDS,
-	0x26: prefixES,
-	0x64: prefixFS,
-	0x65: prefixGS,
+	0x2e: PrefixCS,
+	0x36: PrefixSS,
+	0x3e: PrefixDS,
+	0x26: PrefixES,
+	0x64: PrefixFS,
+	0x65: PrefixGS,
 	// Group 3
-	0x66: prefixOPSIZE,
+	0x66: PrefixOPSIZE,
 	// Group 4
-	0x67: prefixADDR,
+	0x67: PrefixADDR,
 }
 
-// Read only one byte, store information in the prefix field
-func (dc *Disassembler) parsePrefix() {
-	b := make([]byte, 1)
-	_, err := dc.binary.ReadAt(b, dc.offset)
-	if err != nil {
-		panic(err)
-	}
-
-	pref, ok := prefix[b[0]]
+// Read only one byte, store information in the Prefix field
+func (dc *DisContext) parsePrefix() {
+	pref, ok := Prefix[dc.getNextByte()]
 	if ok {
-		dc.prefix |= pref
-		// Advance offset to disassbmle next byte
-		dc.offset++
+		dc.Prefix |= pref
+	} else {
+		dc.putNextByte()
 	}
 }
