@@ -5,10 +5,22 @@ import (
 )
 
 const (
+	// Arith
 	OpAdd = iota
+	OpAdc
+	OpAnd
+	OpXor
+	OpOr
+	OpSbb
+	OpSub
+	OpCmp
+
 	OpInc
+	OpDec
+
 	OpPush
 	OpPop
+
 	OpMov
 	OpLea
 	OpRet
@@ -16,151 +28,70 @@ const (
 
 type parseOp func(byte, *DisContext)
 
-var opcodeParser = [...]parseOp{
-	// add
-	0x00: parseAdd,
-	0x01: parseAdd,
-	0x02: parseAdd,
-	0x03: parseAdd,
-	0x04: parseAdd,
-	0x05: parseAdd,
-	0x80: parseAdd,
-	0x81: parseAdd,
-	0x83: parseAdd,
-
-	// inc
-	0x40: parseInc,
-	0x41: parseInc,
-	0x42: parseInc,
-	0x43: parseInc,
-	0x44: parseInc,
-	0x45: parseInc,
-	0x46: parseInc,
-	0x47: parseInc,
-
-	// push
-	0x50: parsePush,
-	0x51: parsePush,
-	0x52: parsePush,
-	0x53: parsePush,
-	0x54: parsePush,
-	0x55: parsePush,
-	0x56: parsePush,
-	0x57: parsePush,
-	0xff: parsePush,
-	0x6a: parsePush,
-	0x68: parsePush,
-
-	// pop
-	0x58: parsePop,
-	0x59: parsePop,
-	0x5a: parsePop,
-	0x5b: parsePop,
-	0x5c: parsePop,
-	0x5d: parsePop,
-	0x5e: parsePop,
-	0x5f: parsePop,
-
-	// mov
-	0x88: parseMov,
-	0x89: parseMov,
-	0x8a: parseMov,
-	0x8b: parseMov,
-	0x8c: parseMov,
-
-	// lea
-	0x8d: parseLea,
-
-	// ret
-	0xc3: parseRet,
-	0xcb: parseRet,
-	0xc2: parseRet,
-	0xca: parseRet,
-}
-
 func (dc *DisContext) parseOpcode() {
-	b := dc.getNextByte()
-	parseFunc := opcodeParser[b]
-	parseFunc(b, dc)
+	op := dc.nextByte()
+	dc.RawOpCode[0] = op
+
+	switch op {
+	// arith
+	case 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d:
+		fallthrough
+	case 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d:
+		fallthrough
+	case 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d:
+		fallthrough
+	case 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d:
+		parseArith(op, dc)
+
+	// inc, dec
+	case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47:
+		fallthrough
+	case 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f:
+		parseIncDec(op, dc)
+	}
 }
 
-func parseInc(b byte, dc *DisContext) {
-	dc.Opcode = OpInc
-	dc.Operand1 = int(b) - 0x40
+var arithOpcode1 = [...]int{
+	0x0: OpAdd,
+	0x1: OpAdc,
+	0x2: OpAnd,
+	0x3: OpXor,
 }
 
-func parsePush(b byte, dc *DisContext) {
-	dc.Opcode = OpPush
+var arithOpcode2 = [...]int{
+	0x0: OpOr,
+	0x1: OpSbb,
+	0x2: OpSub,
+	0x3: OpCmp,
+}
 
-	switch b {
-	case 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57:
-		// Note the register order tricky makes this possible
-		dc.Operand1 = int(b) - 0x50
+func parseArith(op byte, dc *DisContext) {
+	h, l := op>>4, op&0x0f
+	if l < 8 {
+		dc.Opcode = arithOpcode1[h]
+	} else {
+		dc.Opcode = arithOpcode2[h]
+	}
+
+	switch l {
+	case 0x0, 0x1, 0x2, 0x3:
+		dc.parseModRM()
+	case 0x4:
+		dc.Reg = Al
+		dc.Imm = dc.getImmediate(ByteOpSize)
+	case 0x5:
+		dc.Reg = Eax
+		dc.Imm = dc.getImmediate(CalcOpSize)
 	default:
-		log.Panicln("parsePush: byte 0x%x: Not legal or not supported")
+		log.Panicln("parseArith: byte 0x%x: error", op)
 	}
 }
 
-func parsePop(b byte, dc *DisContext) {
-	dc.Opcode = OpPop
-
-	switch b {
-	case 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f:
-		dc.Operand1 = int(b) - 0x58
+func parseIncDec(b byte, dc *DisContext) {
+	if b&0x0f < 8 {
+		dc.Opcode = OpInc
+	} else {
+		dc.Opcode = OpDec
 	}
-}
-
-func parseAdd(b byte, dc *DisContext) {
-	dc.Opcode = OpAdd
-	mod, reg, rm := parseModRM(dc.getNextByte())
-	dc.Mod = mod
-
-	switch b {
-	case 0x00, 0x01, 0x02, 0x03:
-		dc.Operand1 = reg
-		dc.Operand2 = rm
-	case 0x80, 0x81, 0x83:
-		dc.Operand1 = rm
-		// TODO Operand2 = imm8
-	case 0x04, 0x05:
-		dc.Operand1 = Eax
-		// TODO Operand2 = imm8
-	default:
-		log.Panicln("parseAdd: byte 0x%x: Note legal or not supported", b)
-	}
-}
-
-func parseLea(b byte, dc *DisContext) {
-	dc.Opcode = OpLea
-	mod, reg, rm := parseModRM(dc.getNextByte())
-	dc.Mod = mod
-	dc.Operand1 = reg
-	dc.Operand2 = rm
-}
-
-func parseRet(b byte, dc *DisContext) {
-	dc.Opcode = OpRet
-
-	switch b {
-	case 0xc3, 0xcb:
-		// Do nothing
-	case 0xc2, 0xca:
-		// TODO Operand1 = imm16
-	}
-}
-
-func parseMov(b byte, dc *DisContext) {
-	dc.Opcode = OpMov
-	mod, reg, rm := parseModRM(dc.getNextByte())
-	dc.Mod = mod
-
-	switch b {
-	// Move register
-	case 0x88, 0x89:
-		dc.Operand1 = rm
-		dc.Operand2 = reg
-	case 0x8a, 0x8b:
-		dc.Operand1 = reg
-		dc.Operand2 = rm
-	}
+	dc.Reg = b - 0x40
 }

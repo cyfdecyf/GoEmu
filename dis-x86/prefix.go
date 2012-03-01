@@ -21,11 +21,11 @@ const (
 
 	// Group 3
 	// Operand-size override
-	PrefixOPSIZE
+	PrefixOprandSize
 
 	// Group 4
 	// Address override
-	PrefixADDR
+	PrefixAddrSize
 )
 
 // Branch hints Prefix, in group 2
@@ -47,17 +47,17 @@ var Prefix = map[byte]int{
 	0x64: PrefixFS,
 	0x65: PrefixGS,
 	// Group 3
-	0x66: PrefixOPSIZE,
+	0x66: PrefixOprandSize,
 	// Group 4
-	0x67: PrefixADDR,
+	0x67: PrefixAddrSize,
 }
 
 // Read only one byte, store information in the Prefix field
 func (dc *DisContext) parsePrefix() {
-	pref, ok := Prefix[dc.getNextByte()]
+	pref, ok := Prefix[dc.nextByte()]
 	if ok {
 		dc.Prefix |= pref
 	} else {
-		dc.putNextByte()
+		dc.putByte()
 	}
 }
