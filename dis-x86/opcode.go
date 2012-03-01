@@ -79,10 +79,10 @@ func parseArith(op byte, dc *DisContext) {
 		dc.parseModRM()
 	case 4:
 		dc.Reg = Al
-		dc.Imm = dc.getImmediate(ByteOpSize)
+		dc.Imm = int32(dc.nextByte())
 	case 5:
 		dc.Reg = Eax
-		dc.Imm = dc.getImmediate(CalcOpSize)
+		dc.Imm = dc.getImmediate()
 	default:
 		log.Panicln("parseArith: byte 0x%x: error", op)
 	}

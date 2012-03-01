@@ -55,6 +55,14 @@ func formatRegister(reg, size byte) (name string) {
 	return
 }
 
+func (dc *DisContext) dumpReg() string {
+	return formatRegister(dc.Reg, dc.OperandSize)
+}
+
+func (dc *DisContext) dumpRm() string {
+	return ""
+}
+
 func (dc *DisContext) DumpInsn() (dump string) {
 	switch dc.RawOpCode[0] {
 	// arith
@@ -87,27 +95,24 @@ func (dc *DisContext) DumpInsn() (dump string) {
 }
 
 func dumpInsnModRM(dc *DisContext) string {
-	var src, dst byte
+	var src, dst string
 	op := dc.RawOpCode[0]
 	if op&0x0f < 2 {
-		src, dst = dc.Rm, dc.Reg
+		src = dc.dumpRm()
+		dst = dc.dumpReg()
 	} else {
-		src, dst = dc.Reg, dc.Rm
+		src = dc.dumpReg()
+		dst = dc.dumpRm()
 	}
 
-	size := dc.calcOperandSize(CalcOpSize)
-	return fmt.Sprintf("%s %s,%s", insnName[dc.Opcode],
-		formatRegister(src, size), formatRegister(dst, size))
+	return fmt.Sprintf("%s %s,%s", insnName[dc.Opcode], src, dst)
 }
 
 func dumpInsnImmReg(dc *DisContext) string {
-	size := dc.calcOperandSize(CalcOpSize)
 	return fmt.Sprintf("%s %d,%s", insnName[dc.Opcode],
-		dc.Imm, formatRegister(dc.Reg, size))
+		dc.Imm, dc.dumpReg())
 }
 
 func dumpInsnReg(dc *DisContext) string {
-	size := dc.calcOperandSize(CalcOpSize)
-	return fmt.Sprintf("%s %s", insnName[dc.Opcode],
-		formatRegister(dc.Reg, size))
+	return fmt.Sprintf("%s %s", insnName[dc.Opcode], dc.dumpReg())
 }

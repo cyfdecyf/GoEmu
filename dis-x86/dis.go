@@ -25,7 +25,7 @@ var debug = log.New(os.Stderr, "DEBUG ", log.Lshortfile)
    This makes it easy to get operand for instructions with "+rb, +rw, +rd,
    +ro" opcode column. */
 const (
-	Eax = iota
+	Eax byte = iota
 	Ecx
 	Edx
 	Ebx
@@ -47,7 +47,7 @@ const (
 )
 
 const (
-	OpSizeByte = iota
+	OpSizeByte byte = iota
 	OpSizeWord
 	OpSizeLong // Long = DoubleWord
 	OpSizeQuad
@@ -80,6 +80,9 @@ type DisContext struct {
 	Dflag     bool // Affects the operand-size and address-size attributes
 	Protected bool // in Protected mode?
 
+	OperandSize byte // This should be set when Dflag and Protected bit is
+	AddressSize byte // changed
+
 	Instrucion
 }
 
@@ -93,7 +96,39 @@ func NewDisContext(binary io.ReaderAt) (dc *DisContext) {
 	return
 }
 
+func (dc *DisContext) updateOperandAddressSize() {
+	size := byte(OpSizeWord)
+	if dc.Protected {
+		size += byte(Btoi(dc.Dflag))
+	}
+	dc.OperandSize = size
+	dc.AddressSize = size
+}
+
+func (dc *DisContext) SetDflag(v bool) {
+	if v == dc.Dflag {
+		return
+	}
+	dc.Dflag = v
+	dc.updateOperandAddressSize()
+}
+
+func (dc *DisContext) SetProtected(v bool) {
+	if v == dc.Protected {
+		return
+	}
+	dc.Protected = v
+	dc.updateOperandAddressSize()
+}
+
+func (dc *DisContext) clear() {
+	dc.Prefix = 0
+}
+
+// Parse 1 instruction
 func (dc *DisContext) NextInsn() {
+	dc.clear()
+
 	dc.parsePrefix()
 	dc.parseOpcode()
 }
@@ -153,8 +188,7 @@ func (dc *DisContext) parseModRM() {
 	dc.Mod, dc.Reg, dc.Rm = parseBitField(dc.nextByte())
 	// XXX Is the addressing mode os ModR/M byte affected by the address-size
 	// attribute?
-	size := dc.calcAddressSize(CalcOpSize)
-	switch size {
+	switch dc.AddressSize {
 	case OpSizeWord:
 		dc.parseAfterModRM16bit()
 	case OpSizeLong:
@@ -216,50 +250,18 @@ func Btoi(b bool) int {
 	return 0
 }
 
-const (
-	CalcOpSize = true
-	ByteOpSize = false
-)
-
-func (dc *DisContext) calcSize(calcSize bool, overridePrefix int) (size byte) {
-	if calcSize {
-		// At least word size, even for real mode
-		size = OpSizeWord
-		if dc.Protected {
-			if dc.Prefix&overridePrefix != 0 {
-				size += byte(Btoi(!dc.Dflag))
-			} else {
-				size += byte(Btoi(dc.Dflag))
-			}
-		}
-	} else {
-		size = OpSizeByte
-	}
-	return
-}
-
-func (dc *DisContext) calcOperandSize(calcSize bool) (size byte) {
-	return dc.calcSize(calcSize, PrefixOprandSize)
-}
-
-func (dc *DisContext) calcAddressSize(calcSize bool) (size byte) {
-	return dc.calcSize(calcSize, PrefixAddrSize)
-}
-
-func (dc *DisContext) getDisplacement(calcSize bool) (dis int32) {
-	switch size := dc.calcOperandSize(calcSize); size {
-	case OpSizeByte:
-		dis = int32(dc.nextByte())
+// Only use this function for displacement larger than a byte
+func (dc *DisContext) getDisplacement() (dis int32) {
+	switch dc.OperandSize {
 	case OpSizeWord:
 		dis = int32(dc.nextWord())
 	case OpSizeLong:
 		dis = int32(dc.nextLong())
-	default:
-		log.Fatalf("displacement size error: %v\n", size)
 	}
 	return
 }
 
-func (dc *DisContext) getImmediate(calcsize bool) (dis int32) {
-	return dc.getDisplacement(calcsize)
+// Only use this function for immediate value larger than a byte
+func (dc *DisContext) getImmediate() (dis int32) {
+	return dc.getDisplacement()
 }
