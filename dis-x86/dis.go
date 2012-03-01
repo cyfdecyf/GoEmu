@@ -137,7 +137,7 @@ func (dc *DisContext) putByte() {
 
 /* ModR/M and SIB byte parsing */
 
-func parseModRM(b byte) (mod, reg, rm byte) {
+func parseBitField(b byte) (mod, reg, rm byte) {
 	/*
 	   ModRM byte bit format:
 	       mmgggrrr
@@ -150,12 +150,60 @@ func parseModRM(b byte) (mod, reg, rm byte) {
 }
 
 func (dc *DisContext) parseModRM() {
-	dc.Mod, dc.Reg, dc.Rm = parseModRM(dc.nextByte())
+	dc.Mod, dc.Reg, dc.Rm = parseBitField(dc.nextByte())
+	// XXX Is the addressing mode os ModR/M byte affected by the address-size
+	// attribute?
+	size := dc.calcAddressSize(CalcOpSize)
+	switch size {
+	case OpSizeWord:
+		dc.parseAfterModRM16bit()
+	case OpSizeLong:
+		dc.parseAfterModRM32bit()
+	default:
+		log.Fatalln("Address-size error")
+	}
+}
+
+func (dc *DisContext) parseAfterModRM32bit() {
+	// Refer to Intel Manual 2A Table 2-2
+	switch dc.Mod {
+	case 0:
+		switch dc.Rm {
+		case 4:
+			dc.parseSIB()
+		case 5:
+			dc.Displacement = int32(dc.nextLong())
+		}
+	case 1:
+		if dc.Rm == 4 {
+			dc.parseSIB()
+		}
+		dc.Displacement = int32(dc.nextByte())
+	case 2:
+		if dc.Rm == 4 {
+			dc.parseSIB()
+		}
+		dc.Displacement = int32(dc.nextLong())
+	}
+}
+
+func (dc *DisContext) parseAfterModRM16bit() {
+	// Refer to Intel Manual 2A Table 2-1
+	switch dc.Mod {
+	case 0:
+		if dc.Rm == 6 {
+			dc.Displacement = int32(dc.nextWord())
+		}
+	case 1:
+		dc.Displacement = int32(dc.nextByte())
+	case 2:
+		dc.Displacement = int32(dc.nextWord())
+	}
 }
 
 func (dc *DisContext) parseSIB() {
 	// SIB has the same bit field allocation with ModR/M byte
-	dc.Scale, dc.Index, dc.Base = parseModRM(dc.nextByte())
+	dc.Scale, dc.Index, dc.Base = parseBitField(dc.nextByte())
 }
 
 /* Displacement and immediate value */

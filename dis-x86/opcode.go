@@ -43,26 +43,27 @@ func (dc *DisContext) parseOpcode() {
 	case 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d:
 		parseArith(op, dc)
 
-	// inc, dec
+	// inc
 	case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47:
-		fallthrough
+		parseInc(op, dc)
+	// dec
 	case 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f:
-		parseIncDec(op, dc)
+		parseDec(op, dc)
 	}
 }
 
 var arithOpcode1 = [...]int{
-	0x0: OpAdd,
-	0x1: OpAdc,
-	0x2: OpAnd,
-	0x3: OpXor,
+	0: OpAdd,
+	1: OpAdc,
+	2: OpAnd,
+	3: OpXor,
 }
 
 var arithOpcode2 = [...]int{
-	0x0: OpOr,
-	0x1: OpSbb,
-	0x2: OpSub,
-	0x3: OpCmp,
+	0: OpOr,
+	1: OpSbb,
+	2: OpSub,
+	3: OpCmp,
 }
 
 func parseArith(op byte, dc *DisContext) {
@@ -74,12 +75,12 @@ func parseArith(op byte, dc *DisContext) {
 	}
 
 	switch l {
-	case 0x0, 0x1, 0x2, 0x3:
+	case 0, 1, 2, 3:
 		dc.parseModRM()
-	case 0x4:
+	case 4:
 		dc.Reg = Al
 		dc.Imm = dc.getImmediate(ByteOpSize)
-	case 0x5:
+	case 5:
 		dc.Reg = Eax
 		dc.Imm = dc.getImmediate(CalcOpSize)
 	default:
@@ -87,11 +88,11 @@ func parseArith(op byte, dc *DisContext) {
 	}
 }
 
-func parseIncDec(b byte, dc *DisContext) {
-	if b&0x0f < 8 {
-		dc.Opcode = OpInc
-	} else {
-		dc.Opcode = OpDec
-	}
+func parseInc(b byte, dc *DisContext) {
+	dc.Opcode = OpInc
 	dc.Reg = b - 0x40
+}
+func parseDec(b byte, dc *DisContext) {
+	dc.Opcode = OpDec
+	dc.Reg = b - 0x48
 }
