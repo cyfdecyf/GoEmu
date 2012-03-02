@@ -45,10 +45,21 @@ func (dc *DisContext) parseOpcode() {
 
 	// inc
 	case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47:
-		parseInc(op, dc)
+		dc.Opcode = OpInc
+		dc.Reg = op - 0x40
 	// dec
 	case 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f:
-		parseDec(op, dc)
+		dc.Opcode = OpDec
+		dc.Reg = op - 0x48
+
+	// push
+	case 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57:
+		dc.Opcode = OpPush
+		dc.Reg = op - 0x50
+	// pop
+	case 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f:
+		dc.Opcode = OpPop
+		dc.Reg = op - 0x58
 	}
 }
 
@@ -86,13 +97,4 @@ func parseArith(op byte, dc *DisContext) {
 	default:
 		log.Panicln("parseArith: byte 0x%x: error", op)
 	}
-}
-
-func parseInc(b byte, dc *DisContext) {
-	dc.Opcode = OpInc
-	dc.Reg = b - 0x40
-}
-func parseDec(b byte, dc *DisContext) {
-	dc.Opcode = OpDec
-	dc.Reg = b - 0x48
 }

@@ -12,4 +12,4 @@ include $(GOROOT)/src/Make.pkg
 
 GOFMT=gofmt
 fmt:
-	${GOFMT} -w ${GOFILES}
+	${GOFMT} -w ${GOFILES} dis_test.go

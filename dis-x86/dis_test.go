@@ -83,8 +83,8 @@ func TestIncDec(t *testing.T) {
 		0x48, // dec %eax
 		0x46, // inc %esi
 	})
-
 	dc := NewDisContext(binary)
+
 	dc.NextInsn()
 	checkDump(dc.DumpInsn(), "inc %eax", t)
 
@@ -93,4 +93,26 @@ func TestIncDec(t *testing.T) {
 
 	dc.NextInsn()
 	checkDump(dc.DumpInsn(), "inc %esi", t)
+}
+
+func TestPushPop(t *testing.T) {
+	binary := SliceReader([]byte{
+		0x56, // push %esi
+		0x57, // push %edi
+		0x5d, // pop %ebp
+		0x5b, // pop %ebx
+	})
+	dc := NewDisContext(binary)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "push %esi", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "push %edi", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "pop %ebp", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "pop %ebx", t)
 }
