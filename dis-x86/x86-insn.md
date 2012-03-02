@@ -1,5 +1,9 @@
-Useful online resources
-=======================
+Documents
+=========
+
+The 7 volumes Intel Manual. I'm using the version released in Dec. 2011.
+
+Other onlines resources maybe easy to get started.
 
 - [X86-64 Instruction Encoding](http://wiki.osdev.org/X86-64_Instruction_Encoding)
 - [x86-64 Tour of Intel Manuals](http://x86asm.net/articles/x86-64-tour-of-intel-manuals/)
@@ -7,7 +11,7 @@ Useful online resources
 Operand size and address-size attribute
 =======================================
 
-Refer to Intel Manual 1 3.6. This note is for 32-bit case.
+Refer to Intel Manual 1 3.6. This note only talks about 32-bit case.
 
 > In protected mode, every code segment has a default operand-size attribute and
 > address-size attribute.
@@ -57,7 +61,7 @@ reference.
 Opcode map
 ----------
 
-Appendix A, B in Intel Manual 2B are very useful.
+Appendix A, B in Intel Manual 2C are very useful.
 
 A.3 is the complete opcode map for 1, 2, 3 byte opcodes. Understanding that
 opcode map needs some knowledge on the abbreviations used.

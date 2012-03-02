@@ -21,7 +21,7 @@ DisContext. This is intended to make it useful for different purpose.
 
 var debug = log.New(os.Stderr, "DEBUG ", log.Lshortfile)
 
-/* Register order is the same with Table 3.1 Register Codes in Intel manual 2A
+/* Register order is the same with Table 3.1 Register Codes in Intel Manual 2A
    This makes it easy to get operand for instructions with "+rb, +rw, +rd,
    +ro" opcode column. */
 const (

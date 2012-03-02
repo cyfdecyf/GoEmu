@@ -76,3 +76,21 @@ func TestArith(t *testing.T) {
 	dump = dc.DumpInsn()
 	checkDump(dump, "add -0x3fd35f80(,%ecx,4),%eax", t)
 }
+
+func TestIncDec(t *testing.T) {
+	binary := SliceReader([]byte{
+		0x40, // inc %eax
+		0x48, // dec %eax
+		0x46, // inc %esi
+	})
+
+	dc := NewDisContext(binary)
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "inc %eax", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "dec %eax", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "inc %esi", t)
+}

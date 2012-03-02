@@ -12,6 +12,7 @@ var insnName = [...]string{
 	OpLea:  "lea",
 	OpRet:  "ret",
 	OpInc:  "inc",
+	OpDec:  "dec",
 }
 
 var regName = [...]string{
