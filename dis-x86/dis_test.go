@@ -3,7 +3,6 @@ package dis
 import (
 	"testing"
 	"os"
-	"fmt"
 )
 
 type SliceReader []byte
@@ -14,6 +13,12 @@ func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err os.Error) {
 		p[i] = buf[int(off)+i]
 	}
 	return i, nil
+}
+
+func checkDump(dump string, expected string, t *testing.T) {
+	if dump != expected {
+		t.Errorf("expected: %s\tgot: %s\n", expected, dump)
+	}
 }
 
 func TestPrefixParse(t *testing.T) {
@@ -35,7 +40,7 @@ func TestPrefixParse(t *testing.T) {
 
 	dc.offset++
 	dc.parsePrefix()
-	if dc.Prefix&PrefixAddrSize != PrefixAddrSize {
+	if dc.Prefix&PrefixAddressSize != PrefixAddressSize {
 		t.Error("Prefix address size not detected")
 	}
 	if dc.Prefix&PrefixLOCK != PrefixLOCK {
@@ -44,8 +49,11 @@ func TestPrefixParse(t *testing.T) {
 }
 
 func TestArith(t *testing.T) {
-	// add 0x1,%eax
-	binary := SliceReader([]byte{0x03, 0x05, 0x01, 0x00, 0x00, 0x00})
+	binary := SliceReader([]byte{
+		0x03, 0x05, 0x01, 0x00, 0x00, 0x00, // add 0x1,%eax
+		0x05, 0x32, 0x54, 0x12, 0x00, // add $0x125432,%eax
+		0x03, 0x45, 0x08, // add 0x8(%ebp),%eax
+	})
 	dc := NewDisContext(binary)
 
 	dc.NextInsn()
@@ -53,5 +61,13 @@ func TestArith(t *testing.T) {
 		t.Error("Add arithmetic insn not detected")
 	}
 	dump := dc.DumpInsn()
-	fmt.Println(dump)
+	checkDump(dump, "add 0x1,%eax", t)
+
+	dc.NextInsn()
+	dump = dc.DumpInsn()
+	checkDump(dump, "add $0x125432,%eax", t)
+
+	dc.NextInsn()
+	dump = dc.DumpInsn()
+	checkDump(dump, "add 0x8(%ebp),%eax", t)
 }

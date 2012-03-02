@@ -39,7 +39,7 @@ var regName8 = [...]string{
 type insnDumper func(string, *Instrucion) string
 
 // Return the string name of a register
-func formatRegister(reg, size byte) (name string) {
+func formatReg(reg, size byte) (name string) {
 	switch size {
 	case OpSizeByte:
 		name = regName8[reg]
@@ -55,12 +55,60 @@ func formatRegister(reg, size byte) (name string) {
 	return
 }
 
-func (dc *DisContext) dumpReg() string {
-	return formatRegister(dc.Reg, dc.OperandSize)
+func formatMemReg(reg, size byte) (name string) {
+	return fmt.Sprintf("(%s)", formatReg(reg, size))
 }
 
-func (dc *DisContext) dumpRm() string {
-	return ""
+func (dc *DisContext) dumpDisp() string {
+	return fmt.Sprintf("0x%x", dc.Disp)
+}
+
+func (dc *DisContext) dumpImm() string {
+	return fmt.Sprintf("$0x%x", dc.Imm)
+}
+
+func (dc *DisContext) dumpReg() string {
+	return formatReg(dc.Reg, dc.OperandSize)
+}
+
+func (dc *DisContext) dumpRm() (dump string) {
+	if dc.AddressSize == OpSizeLong {
+		return dc.dumpRm32bit()
+	}
+	return "not supported"
+}
+
+func (dc *DisContext) dumpRm32bit() (dump string) {
+	if dc.Mod == 3 {
+		return formatReg(dc.Rm, dc.OperandSize)
+	}
+
+	if dc.hasDisp {
+		dump = dc.dumpDisp()
+	}
+	if dc.hasSIB {
+		dump += dc.dumpSIB()
+	} else if !(dc.Rm == 5 && dc.Mod == 0) {
+		dump += formatMemReg(dc.Rm, dc.OperandSize)
+	}
+	return
+}
+
+func (dc *DisContext) dumpSIB() string {
+	// Refer to Intel Manual 2A Table 2-3
+	var scale, base, index string
+
+	if !(dc.Base == 5 && dc.Mod == 0) {
+		base = formatReg(dc.Base, dc.OperandSize)
+	}
+
+	if dc.Index != 4 {
+		// XXX What does none mean for scale index? Only use the base register
+		// in SIB?
+		index = formatReg(dc.Index, dc.OperandSize)
+		scale = fmt.Sprintf("%d", dc.Scale)
+	}
+	return fmt.Sprintf("(%s,%s,%s)", base, scale, index)
 }
 
 func (dc *DisContext) DumpInsn() (dump string) {
@@ -98,19 +146,19 @@ func dumpInsnModRM(dc *DisContext) string {
 	var src, dst string
 	op := dc.RawOpCode[0]
 	if op&0x0f < 2 {
-		src = dc.dumpRm()
-		dst = dc.dumpReg()
-	} else {
 		src = dc.dumpReg()
 		dst = dc.dumpRm()
+	} else {
+		src = dc.dumpRm()
+		dst = dc.dumpReg()
 	}
 
 	return fmt.Sprintf("%s %s,%s", insnName[dc.Opcode], src, dst)
 }
 
 func dumpInsnImmReg(dc *DisContext) string {
-	return fmt.Sprintf("%s %d,%s", insnName[dc.Opcode],
-		dc.Imm, dc.dumpReg())
+	return fmt.Sprintf("%s %s,%s", insnName[dc.Opcode],
+		dc.dumpImm(), dc.dumpReg())
 }
 
 func dumpInsnReg(dc *DisContext) string {

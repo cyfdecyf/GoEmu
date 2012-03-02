@@ -65,8 +65,10 @@ type Instrucion struct {
 	Index byte
 	Base  byte
 
-	Displacement int32
-	Imm          int32
+	Disp    int32
+	Imm     int32
+	hasDisp bool
+	hasSIB  bool
 
 	RawOpCode [3]byte
 }
@@ -89,11 +91,23 @@ type DisContext struct {
 // Create a new DisContext with protected mode on, dflag set.
 func NewDisContext(binary io.ReaderAt) (dc *DisContext) {
 	dc = new(DisContext)
+
 	dc.binary = binary
 	dc.offset = 0
 	dc.Dflag = true
 	dc.Protected = true
+	dc.OperandSize = OpSizeLong
+	dc.AddressSize = OpSizeLong
+
 	return
+}
+
+// Convert byte to int. true = 1, false = 0
+func Btoi(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func (dc *DisContext) updateOperandAddressSize() {
@@ -121,13 +135,12 @@ func (dc *DisContext) SetProtected(v bool) {
 	dc.updateOperandAddressSize()
 }
 
-func (dc *DisContext) clear() {
-	dc.Prefix = 0
-}
-
 // Parse 1 instruction
 func (dc *DisContext) NextInsn() {
-	dc.clear()
+	dc.hasDisp = false
+	dc.hasSIB = false
+	dc.Prefix = 0
+	dc.updateOperandAddressSize()
 
 	dc.parsePrefix()
 	dc.parseOpcode()
@@ -200,24 +213,26 @@ func (dc *DisContext) parseModRM() {
 
 func (dc *DisContext) parseAfterModRM32bit() {
 	// Refer to Intel Manual 2A Table 2-2
+	if dc.Mod == 3 {
+		return
+	}
+
+	if dc.Rm == 4 {
+		dc.parseSIB()
+	}
+
 	switch dc.Mod {
 	case 0:
-		switch dc.Rm {
-		case 4:
-			dc.parseSIB()
-		case 5:
-			dc.Displacement = int32(dc.nextLong())
+		if dc.Rm == 5 {
+			dc.Disp = int32(dc.nextLong())
+			dc.hasDisp = true
 		}
 	case 1:
-		if dc.Rm == 4 {
-			dc.parseSIB()
-		}
-		dc.Displacement = int32(dc.nextByte())
+		dc.Disp = int32(dc.nextByte())
+		dc.hasDisp = true
 	case 2:
-		if dc.Rm == 4 {
-			dc.parseSIB()
-		}
-		dc.Displacement = int32(dc.nextLong())
+		dc.Disp = int32(dc.nextLong())
+		dc.hasDisp = true
 	}
 }
 
@@ -226,42 +241,33 @@ func (dc *DisContext) parseAfterModRM16bit() {
 	switch dc.Mod {
 	case 0:
 		if dc.Rm == 6 {
-			dc.Displacement = int32(dc.nextWord())
+			dc.Disp = int32(dc.nextWord())
+			dc.hasDisp = true
 		}
 	case 1:
-		dc.Displacement = int32(dc.nextByte())
+		dc.Disp = int32(dc.nextByte())
+		dc.hasDisp = true
 	case 2:
-		dc.Displacement = int32(dc.nextWord())
+		dc.Disp = int32(dc.nextWord())
+		dc.hasDisp = true
 	}
 }
 
 func (dc *DisContext) parseSIB() {
 	// SIB has the same bit field allocation with ModR/M byte
 	dc.Scale, dc.Index, dc.Base = parseBitField(dc.nextByte())
+	dc.hasSIB = true
 }
 
-/* Displacement and immediate value */
-
-// Convert byte to int. true = 1, false = 0
-func Btoi(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-// Only use this function for displacement larger than a byte
-func (dc *DisContext) getDisplacement() (dis int32) {
-	switch dc.OperandSize {
-	case OpSizeWord:
-		dis = int32(dc.nextWord())
-	case OpSizeLong:
-		dis = int32(dc.nextLong())
-	}
-	return
-}
+/* Immediate value */
 
 // Only use this function for immediate value larger than a byte
-func (dc *DisContext) getImmediate() (dis int32) {
-	return dc.getDisplacement()
+func (dc *DisContext) getImmediate() (r int32) {
+	switch dc.OperandSize {
+	case OpSizeWord:
+		r = int32(dc.nextWord())
+	case OpSizeLong:
+		r = int32(dc.nextLong())
+	}
+	return
 }
