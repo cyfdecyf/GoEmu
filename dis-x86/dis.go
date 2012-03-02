@@ -257,6 +257,16 @@ func (dc *DisContext) parseSIB() {
 	// SIB has the same bit field allocation with ModR/M byte
 	dc.Scale, dc.Index, dc.Base = parseBitField(dc.nextByte())
 	dc.hasSIB = true
+
+	if dc.Base == 5 {
+		dc.hasDisp = true
+		switch dc.Mod {
+		case 0, 2:
+			dc.Disp = int32(dc.nextLong())
+		case 1:
+			dc.Disp = int32(dc.nextByte())
+		}
+	}
 }
 
 /* Immediate value */

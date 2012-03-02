@@ -16,7 +16,7 @@ var insnName = [...]string{
 
 var regName = [...]string{
 	Eax: "ax",
-	Ecx: "bx",
+	Ecx: "cx",
 	Edx: "dx",
 	Ebx: "bx",
 	Esp: "sp",
@@ -60,11 +60,11 @@ func formatMemReg(reg, size byte) (name string) {
 }
 
 func (dc *DisContext) dumpDisp() string {
-	return fmt.Sprintf("0x%x", dc.Disp)
+	return fmt.Sprintf("%#x", dc.Disp)
 }
 
 func (dc *DisContext) dumpImm() string {
-	return fmt.Sprintf("$0x%x", dc.Imm)
+	return fmt.Sprintf("$%#x", dc.Imm)
 }
 
 func (dc *DisContext) dumpReg() string {
@@ -106,9 +106,9 @@ func (dc *DisContext) dumpSIB() string {
 		// XXX What does none mean for scale index? Only use the base register
 		// in SIB?
 		index = formatReg(dc.Index, dc.OperandSize)
-		scale = fmt.Sprintf("%d", dc.Scale)
+		scale = fmt.Sprintf("%d", 1<<dc.Scale)
 	}
-	return fmt.Sprintf("(%s,%s,%s)", base, scale, index)
+	return fmt.Sprintf("(%s,%s,%s)", base, index, scale)
 }
 
 func (dc *DisContext) DumpInsn() (dump string) {

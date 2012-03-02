@@ -53,6 +53,7 @@ func TestArith(t *testing.T) {
 		0x03, 0x05, 0x01, 0x00, 0x00, 0x00, // add 0x1,%eax
 		0x05, 0x32, 0x54, 0x12, 0x00, // add $0x125432,%eax
 		0x03, 0x45, 0x08, // add 0x8(%ebp),%eax
+		0x03, 0x04, 0x8d, 0x80, 0xa0, 0x2c, 0xc0, // add -0x3fd35f80(,%ecx,4),%eax
 	})
 	dc := NewDisContext(binary)
 
@@ -70,4 +71,8 @@ func TestArith(t *testing.T) {
 	dc.NextInsn()
 	dump = dc.DumpInsn()
 	checkDump(dump, "add 0x8(%ebp),%eax", t)
+
+	dc.NextInsn()
+	dump = dc.DumpInsn()
+	checkDump(dump, "add -0x3fd35f80(,%ecx,4),%eax", t)
 }
