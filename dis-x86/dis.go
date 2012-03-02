@@ -33,6 +33,10 @@ const (
 	Ebp
 	Esi
 	Edi
+	ES
+	SS
+	CS
+	DS
 )
 
 const (

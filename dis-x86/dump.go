@@ -25,6 +25,10 @@ var regName = [...]string{
 	Ebp: "bp",
 	Esi: "si",
 	Edi: "di",
+	ES: "es",
+	SS: "ss",
+	CS: "cs",
+	DS: "ds",
 }
 
 var regName8 = [...]string{
@@ -42,19 +46,22 @@ type insnDumper func(string, *Instrucion) string
 
 // Return the string name of a register
 func formatReg(reg, size byte) (name string) {
+	if reg >= ES {
+		return "%" + regName[reg]
+	}
 	switch size {
 	case OpSizeByte:
 		name = regName8[reg]
 	case OpSizeWord:
 		name = regName[reg]
 	case OpSizeLong:
-		name = "%e" + regName[reg]
+		name = "e" + regName[reg]
 	case OpSizeQuad:
-		name = "%r" + regName[reg]
+		name = "r" + regName[reg]
 	default:
 		log.Fatalf("operand size %d not correct\n", size)
 	}
-	return
+	return "%" + name
 }
 
 func formatMemReg(reg, size byte) (name string) {
@@ -146,6 +153,9 @@ func (dc *DisContext) DumpInsn() (dump string) {
 		fallthrough
 	// pop
 	case 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f:
+		fallthrough
+	// segment related push/pop
+	case 0x06, 0x16, 0x07, 0x17, 0x0e, 0x1e, 0x1f:
 		dump = dumpInsnReg(dc)
 	}
 	return

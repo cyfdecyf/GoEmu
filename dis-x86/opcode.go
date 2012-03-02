@@ -33,6 +33,8 @@ func (dc *DisContext) parseOpcode() {
 	dc.RawOpCode[0] = op
 
 	switch op {
+	/* Arithmetic and logic instructions */
+
 	// arith
 	case 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d:
 		fallthrough
@@ -51,6 +53,13 @@ func (dc *DisContext) parseOpcode() {
 	case 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f:
 		dc.Opcode = OpDec
 		dc.Reg = op - 0x48
+
+	/* Stack instructions */
+
+	// segment related push/pop
+	case 0x06, 0x16, 0x07, 0x17, 0x0e, 0x1e, 0x1f:
+		segopmap := segStackOpcode[op]
+		dc.Opcode, dc.Reg = int(segopmap[0]), segopmap[1]
 
 	// push
 	case 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57:
@@ -97,4 +106,11 @@ func parseArith(op byte, dc *DisContext) {
 	default:
 		log.Panicln("parseArith: byte 0x%x: error", op)
 	}
+}
+
+var segStackOpcode = map[byte]([2]byte){
+	0x06: [2]byte{OpPush, ES}, 0x07: [2]byte{OpPop, ES},
+	0x16: [2]byte{OpPush, SS}, 0x17: [2]byte{OpPop, SS},
+	0x0e: [2]byte{OpPush, CS},
+	0x1e: [2]byte{OpPush, DS}, 0x1f: [2]byte{OpPop, DS},
 }

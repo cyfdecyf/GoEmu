@@ -101,6 +101,9 @@ func TestPushPop(t *testing.T) {
 		0x57, // push %edi
 		0x5d, // pop %ebp
 		0x5b, // pop %ebx
+		0x16, // push %ss
+		0x1e, // push %ds
+		0x1f, // pop %ds
 	})
 	dc := NewDisContext(binary)
 
@@ -115,4 +118,13 @@ func TestPushPop(t *testing.T) {
 
 	dc.NextInsn()
 	checkDump(dc.DumpInsn(), "pop %ebx", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "push %ss", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "push %ds", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "pop %ds", t)
 }
