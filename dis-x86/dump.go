@@ -43,11 +43,11 @@ var regName8 = [...]string{
 }
 
 // Return the string name of a register
-func formatReg(reg, size byte) (name string) {
+func (dc *DisContext) formatReg(reg byte) (name string) {
 	if reg >= ES {
 		return "%" + regName[reg]
 	}
-	switch size {
+	switch dc.EffectiveOperandSize() {
 	case OpSizeByte:
 		name = regName8[reg]
 	case OpSizeWord:
@@ -57,13 +57,13 @@ func formatReg(reg, size byte) (name string) {
 	case OpSizeQuad:
 		name = "r" + regName[reg]
 	default:
-		log.Fatalf("operand size %d not correct\n", size)
+		log.Fatalf("operand size %d not correct\n", dc.EffectiveOperandSize())
 	}
 	return "%" + name
 }
 
-func formatMemReg(reg, size byte) (name string) {
-	return fmt.Sprintf("(%s)", formatReg(reg, size))
+func (dc *DisContext) dumpReg() string {
+	return dc.formatReg(dc.Reg)
 }
 
 func (dc *DisContext) dumpDisp() string {
@@ -74,12 +74,8 @@ func (dc *DisContext) dumpImm() string {
 	return fmt.Sprintf("$%#x", dc.Imm)
 }
 
-func (dc *DisContext) dumpReg() string {
-	return formatReg(dc.Reg, dc.OperandSize)
-}
-
 func (dc *DisContext) dumpRm() (dump string) {
-	if dc.AddressSize == OpSizeLong {
+	if dc.EffectiveAddressSize() == OpSizeLong {
 		return dc.dumpRm32bit()
 	}
 	return "not supported"
@@ -87,7 +83,7 @@ func (dc *DisContext) dumpRm() (dump string) {
 
 func (dc *DisContext) dumpRm32bit() (dump string) {
 	if dc.Mod == 3 {
-		return formatReg(dc.Rm, dc.OperandSize)
+		return dc.formatReg(dc.Rm)
 	}
 
 	if dc.hasDisp {
@@ -96,7 +92,7 @@ func (dc *DisContext) dumpRm32bit() (dump string) {
 	if dc.hasSIB {
 		dump += dc.dumpSIB()
 	} else if !(dc.Rm == 5 && dc.Mod == 0) {
-		dump += formatMemReg(dc.Rm, dc.OperandSize)
+		dump += fmt.Sprintf("(%s)", dc.formatReg(dc.Rm))
 	}
 	return
 }
@@ -106,13 +102,13 @@ func (dc *DisContext) dumpSIB() string {
 	var scale, base, index string
 
 	if !(dc.Base == 5 && dc.Mod == 0) {
-		base = formatReg(dc.Base, dc.OperandSize)
+		base = dc.formatReg(dc.Base)
 	}
 
 	if dc.Index != 4 {
 		// XXX What does none mean for scale index? Only use the base register
 		// in SIB?
-		index = formatReg(dc.Index, dc.OperandSize)
+		index = dc.formatReg(dc.Index)
 		scale = fmt.Sprintf("%d", 1<<dc.Scale)
 	}
 	return fmt.Sprintf("(%s,%s,%s)", base, index, scale)

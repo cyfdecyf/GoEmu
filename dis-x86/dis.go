@@ -51,7 +51,8 @@ const (
 )
 
 const (
-	OpSizeByte byte = iota
+	// Start from non 0 to make size override testing easier
+	OpSizeByte byte = iota + 1
 	OpSizeWord
 	OpSizeLong // Long = DoubleWord
 	OpSizeQuad
@@ -82,10 +83,24 @@ type Instruction struct {
 	Dst      byte // destination operand type
 	Noperand byte // how many operands
 
-	hasDisp bool
-	hasSIB  bool
+	// Instruction specific operand/address size attribute.
+	// This will only be set and overrides the information in DisContext if:
+	// 1. The instruction has address/operand-size override prefix
+	// 2. Or the instruction itself specifies these information
+	//
+	// To save space (as this is use in frequently), the high 4 bits specify
+	// the address size, low 4 bits specify operand size.
+	//
+	// For emulation, if the instruction has size override prefix, the actual
+	// size should always be calculated according to the current protected
+	// mode and dflag. The disassembler can rely on this because it has no
+	// dynamic information about the CPU.
+	sizeOverride byte
 
 	RawOpCode [3]byte
+
+	hasDisp bool
+	hasSIB  bool
 }
 
 func (insn *Instruction) set1Operand(op int, src byte) {
@@ -96,9 +111,25 @@ func (insn *Instruction) set1Operand(op int, src byte) {
 
 func (insn *Instruction) set2Operand(op int, src, dst byte) {
 	insn.Opcode = op
-	insn.Src = src	
+	insn.Src = src
 	insn.Dst = dst
 	insn.Noperand = 2
+}
+
+func (insn *Instruction) insnOperandSize() byte {
+	return insn.sizeOverride & 0x0f
+}
+
+func (insn *Instruction) insnAddressSize() byte {
+	return insn.sizeOverride & 0x0f
+}
+
+func (insn *Instruction) setInsnOperandSize(v byte) {
+	insn.sizeOverride |= v
+}
+
+func (insn *Instruction) setInsnAddressSize(v byte) {
+	insn.sizeOverride |= v << 4
 }
 
 // Disassemble. Record information in each pass.
@@ -110,7 +141,7 @@ type DisContext struct {
 	Dflag     bool // Affects the operand-size and address-size attributes
 	Protected bool // in Protected mode?
 
-	OperandSize byte // This should be set when Dflag and Protected bit is
+	OperandSize byte // These should be set when Dflag and Protected bit is
 	AddressSize byte // changed
 
 	Instruction
@@ -147,6 +178,22 @@ func (dc *DisContext) updateOperandAddressSize() {
 	dc.AddressSize = size
 }
 
+func (dc *DisContext) EffectiveOperandSize() (size byte) {
+	size = dc.OperandSize
+	if dc.sizeOverride != 0 && dc.insnOperandSize() != 0 {
+		size = dc.insnOperandSize()
+	}
+	return
+}
+
+func (dc *DisContext) EffectiveAddressSize() (size byte) {
+	size = dc.AddressSize
+	if dc.sizeOverride != 0 && dc.insnAddressSize() != 0 {
+		size = dc.insnAddressSize()
+	}
+	return
+}
+
 func (dc *DisContext) SetDflag(v bool) {
 	if v == dc.Dflag {
 		return
@@ -168,7 +215,7 @@ func (dc *DisContext) NextInsn() {
 	dc.hasDisp = false
 	dc.hasSIB = false
 	dc.Prefix = 0
-	dc.updateOperandAddressSize()
+	dc.sizeOverride = 0
 
 	dc.parsePrefix()
 	dc.parseOpcode()
@@ -301,7 +348,7 @@ func (dc *DisContext) parseSIB() {
 
 // Only use this function for immediate value larger than a byte
 func (dc *DisContext) getImmediate() (r int32) {
-	switch dc.OperandSize {
+	switch dc.EffectiveOperandSize() {
 	case OpSizeWord:
 		r = int32(dc.nextWord())
 	case OpSizeLong:
