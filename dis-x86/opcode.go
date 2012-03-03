@@ -43,7 +43,7 @@ func (dc *DisContext) parseOpcode() {
 	case 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d:
 		fallthrough
 	case 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d:
-		parseArith(op, dc)
+		dc.parseArith(op)
 
 	// inc
 	case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47:
@@ -73,9 +73,14 @@ func (dc *DisContext) parseOpcode() {
 
 	/* Memory instructions */
 
+	// mov offset,ax (0xa0, a1)
+	// mov ax,offset (0xa2, a3)
+	case 0xa0, 0xa1, 0xa2, 0xa3:
+		dc.parseMovEax(op)
+
 	// mov (immediate byte into byte register)
 	case 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7:
-		dc.Imm = int32(dc.nextByte())
+		dc.ImmOff = int32(dc.nextByte())
 		dc.Reg = op - 0xb0
 		dc.setInsnOperandSize(OpSizeByte)
 		dc.set2Operand(OpMov, OperandImm, OperandReg)
@@ -96,7 +101,7 @@ var arithOpcode2 = [...]int{
 	3: OpCmp,
 }
 
-func parseArith(op byte, dc *DisContext) {
+func (dc *DisContext) parseArith(op byte) {
 	h, l := op>>4, op&0x0f
 	var opcode int
 	if l < 8 {
@@ -115,11 +120,11 @@ func parseArith(op byte, dc *DisContext) {
 		}
 	case 4:
 		dc.Reg = Al
-		dc.Imm = int32(dc.nextByte())
+		dc.ImmOff = int32(dc.nextByte())
 		dc.set2Operand(opcode, OperandImm, OperandReg)
 	case 5:
 		dc.Reg = Eax
-		dc.Imm = dc.getImmediate()
+		dc.ImmOff = dc.getImmediate()
 		dc.set2Operand(opcode, OperandImm, OperandReg)
 	default:
 		log.Panicln("parseArith: byte 0x%x: error", op)
@@ -129,6 +134,20 @@ func parseArith(op byte, dc *DisContext) {
 var segStackOpcode = map[byte]([2]byte){
 	0x06: [2]byte{OpPush, ES}, 0x07: [2]byte{OpPop, ES},
 	0x16: [2]byte{OpPush, SS}, 0x17: [2]byte{OpPop, SS},
-	0x0e: [2]byte{OpPush, CS},
+	0x0e: [2]byte{OpPush, CS},       // 0x0f: 2 byte opcode escape
 	0x1e: [2]byte{OpPush, DS}, 0x1f: [2]byte{OpPop, DS},
+}
+
+var movA0A3Table = map[byte]([2]byte){
+	0xa0: [2]byte{OperandMOffByte, OperandReg},
+	0xa1: [2]byte{OperandMOffCalc, OperandReg},
+	0xa2: [2]byte{OperandReg, OperandMOffByte},
+	0xa3: [2]byte{OperandReg, OperandMOffCalc},
+}
+
+func (dc *DisContext) parseMovEax(op byte) {
+	te := movA0A3Table[op]
+	dc.ImmOff = int32(dc.nextLong())
+	dc.Reg = Eax
+	dc.set2Operand(OpMov, te[0], te[1])
 }

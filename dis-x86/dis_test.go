@@ -132,9 +132,17 @@ func TestPushPop(t *testing.T) {
 func TestMov(t *testing.T) {
 	binary := SliceReader([]byte{
 		0xb0, 0xeb, // mov $0xeb,%al
+		0xa3, 0x24, 0x01, 0x31, 0xc0, // mov %eax,0xc0310124
+		0xa1, 0x9c, 0xf6, 0x2b, 0xc0, // mov 0xc02bf69c,%eax
 	})
 	dc := NewDisContext(binary)
 
 	dc.NextInsn()
 	checkDump(dc.DumpInsn(), "mov $0xeb,%al", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov %eax,0xc0310124", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov 0xc02bf69c,%eax", t)
 }

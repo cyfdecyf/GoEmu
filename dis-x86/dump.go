@@ -71,7 +71,12 @@ func (dc *DisContext) dumpDisp() string {
 }
 
 func (dc *DisContext) dumpImm() string {
-	return fmt.Sprintf("$%#x", dc.Imm)
+	return fmt.Sprintf("$%#x", dc.ImmOff)
+}
+
+func (dc *DisContext) dumpOffset() string {
+	// Offset are unsigned
+	return fmt.Sprintf("%#x", uint32(dc.ImmOff))
 }
 
 func (dc *DisContext) dumpRm() (dump string) {
@@ -130,6 +135,8 @@ func (dc *DisContext) DumpInsn() (dump string) {
 
 func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	switch operand {
+	case OperandMOffByte, OperandMOffCalc:
+		dump = dc.dumpOffset()
 	case OperandImm:
 		dump = dc.dumpImm()
 	case OperandReg:

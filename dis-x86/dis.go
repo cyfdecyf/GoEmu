@@ -51,8 +51,8 @@ const (
 )
 
 const (
-	// Start from non 0 to make size override testing easier
-	OpSizeByte byte = iota + 1
+	OpSizeCalc byte = iota // zero, means need to calculate the size
+	OpSizeByte             // Starts from 1 to make size override testing easier
 	OpSizeWord
 	OpSizeLong // Long = DoubleWord
 	OpSizeQuad
@@ -62,14 +62,16 @@ const (
 	OperandReg byte = iota
 	OperandRm
 	OperandImm
+	OperandMOffByte // 1 byte memory offset
+	OperandMOffCalc // size depends on address-size attribute
 )
 
 type Instruction struct {
 	Prefix int
 	Opcode int
 
-	Disp int32 // Displacement
-	Imm  int32 // Immediate value
+	Disp   int32 // Displacement
+	ImmOff int32 // Immediate value or Offset
 
 	Mod byte
 	Reg byte
