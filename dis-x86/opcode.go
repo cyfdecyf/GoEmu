@@ -47,28 +47,29 @@ func (dc *DisContext) parseOpcode() {
 
 	// inc
 	case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47:
-		dc.Opcode = OpInc
 		dc.Reg = op - 0x40
+		dc.set1Operand(OpInc, OperandReg)
 	// dec
 	case 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f:
-		dc.Opcode = OpDec
 		dc.Reg = op - 0x48
+		dc.set1Operand(OpDec, OperandReg)
 
 	/* Stack instructions */
 
 	// segment related push/pop
 	case 0x06, 0x16, 0x07, 0x17, 0x0e, 0x1e, 0x1f:
 		segopmap := segStackOpcode[op]
-		dc.Opcode, dc.Reg = int(segopmap[0]), segopmap[1]
+		dc.Reg = segopmap[1]
+		dc.set1Operand(int(segopmap[0]), OperandReg)
 
 	// push
 	case 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57:
-		dc.Opcode = OpPush
 		dc.Reg = op - 0x50
+		dc.set1Operand(OpPush, OperandReg)
 	// pop
 	case 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f:
-		dc.Opcode = OpPop
 		dc.Reg = op - 0x58
+		dc.set1Operand(OpPop, OperandReg)
 	}
 }
 
@@ -88,21 +89,29 @@ var arithOpcode2 = [...]int{
 
 func parseArith(op byte, dc *DisContext) {
 	h, l := op>>4, op&0x0f
+	var opcode int
 	if l < 8 {
-		dc.Opcode = arithOpcode1[h]
+		opcode = arithOpcode1[h]
 	} else {
-		dc.Opcode = arithOpcode2[h]
+		opcode = arithOpcode2[h]
 	}
 
 	switch l {
 	case 0, 1, 2, 3:
 		dc.parseModRM()
+		if l < 2 {
+			dc.set2Operand(opcode, OperandReg, OperandRm)
+		} else {
+			dc.set2Operand(opcode, OperandRm, OperandReg)
+		}
 	case 4:
 		dc.Reg = Al
 		dc.Imm = int32(dc.nextByte())
+		dc.set2Operand(opcode, OperandImm, OperandReg)
 	case 5:
 		dc.Reg = Eax
 		dc.Imm = dc.getImmediate()
+		dc.set2Operand(opcode, OperandImm, OperandReg)
 	default:
 		log.Panicln("parseArith: byte 0x%x: error", op)
 	}

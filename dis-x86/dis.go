@@ -57,9 +57,18 @@ const (
 	OpSizeQuad
 )
 
-type Instrucion struct {
+const (
+	OperandReg byte = iota
+	OperandRm
+	OperandImm
+)
+
+type Instruction struct {
 	Prefix int
 	Opcode int
+
+	Disp int32 // Displacement
+	Imm  int32 // Immediate value
 
 	Mod byte
 	Reg byte
@@ -69,12 +78,27 @@ type Instrucion struct {
 	Index byte
 	Base  byte
 
-	Disp    int32
-	Imm     int32
+	Src      byte // source operand type
+	Dst      byte // destination operand type
+	Noperand byte // how many operands
+
 	hasDisp bool
 	hasSIB  bool
 
 	RawOpCode [3]byte
+}
+
+func (insn *Instruction) set1Operand(op int, src byte) {
+	insn.Opcode = op
+	insn.Src = src
+	insn.Noperand = 1
+}
+
+func (insn *Instruction) set2Operand(op int, src, dst byte) {
+	insn.Opcode = op
+	insn.Src = src	
+	insn.Dst = dst
+	insn.Noperand = 2
 }
 
 // Disassemble. Record information in each pass.
@@ -89,7 +113,7 @@ type DisContext struct {
 	OperandSize byte // This should be set when Dflag and Protected bit is
 	AddressSize byte // changed
 
-	Instrucion
+	Instruction
 }
 
 // Create a new DisContext with protected mode on, dflag set.

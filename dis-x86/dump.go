@@ -25,10 +25,10 @@ var regName = [...]string{
 	Ebp: "bp",
 	Esi: "si",
 	Edi: "di",
-	ES: "es",
-	SS: "ss",
-	CS: "cs",
-	DS: "ds",
+	ES:  "es",
+	SS:  "ss",
+	CS:  "cs",
+	DS:  "ds",
 }
 
 var regName8 = [...]string{
@@ -41,8 +41,6 @@ var regName8 = [...]string{
 	Dh: "dh",
 	Bh: "bh",
 }
-
-type insnDumper func(string, *Instrucion) string
 
 // Return the string name of a register
 func formatReg(reg, size byte) (name string) {
@@ -121,65 +119,40 @@ func (dc *DisContext) dumpSIB() string {
 }
 
 func (dc *DisContext) DumpInsn() (dump string) {
-	switch dc.RawOpCode[0] {
-	// arith
-	case 0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0a, 0x0b:
-		fallthrough
-	case 0x10, 0x11, 0x12, 0x13, 0x18, 0x19, 0x1a, 0x1b:
-		fallthrough
-	case 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2a, 0x2b:
-		fallthrough
-	case 0x30, 0x31, 0x32, 0x33, 0x38, 0x39, 0x3a, 0x3b:
-		dump = dumpInsnModRM(dc)
-
-	// arith
-	case 0x04, 0x05, 0x0c, 0x0d:
-		fallthrough
-	case 0x14, 0x15, 0x1c, 0x1d:
-		fallthrough
-	case 0x24, 0x25, 0x2c, 0x2d:
-		fallthrough
-	case 0x34, 0x35, 0x3c, 0x3d:
-		dump = dumpInsnImmReg(dc)
-
-	// inc
-	case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47:
-		fallthrough
-	// dec
-	case 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f:
-		fallthrough
-	// push
-	case 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57:
-		fallthrough
-	// pop
-	case 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f:
-		fallthrough
-	// segment related push/pop
-	case 0x06, 0x16, 0x07, 0x17, 0x0e, 0x1e, 0x1f:
-		dump = dumpInsnReg(dc)
+	switch dc.Noperand {
+	case 0:
+		dump = dc.dump0OpInsn()
+	case 1:
+		dump = dc.dump1OpInsn()
+	case 2:
+		dump = dc.dump2OpInsn()
+	default:
+		log.Fatalln("Operand size not correct or supported.")
 	}
 	return
 }
 
-func dumpInsnModRM(dc *DisContext) string {
-	var src, dst string
-	op := dc.RawOpCode[0]
-	if op&0x0f < 2 {
-		src = dc.dumpReg()
-		dst = dc.dumpRm()
-	} else {
-		src = dc.dumpRm()
-		dst = dc.dumpReg()
+func (dc *DisContext) dumpOperand(operand byte) (dump string) {
+	switch operand {
+	case OperandImm:
+		dump = dc.dumpImm()
+	case OperandReg:
+		dump = dc.dumpReg()
+	case OperandRm:
+		dump = dc.dumpRm()
 	}
-
-	return fmt.Sprintf("%s %s,%s", insnName[dc.Opcode], src, dst)
+	return
 }
 
-func dumpInsnImmReg(dc *DisContext) string {
+func (dc *DisContext) dump0OpInsn() string {
+	return insnName[dc.Opcode]
+}
+
+func (dc *DisContext) dump1OpInsn() string {
+	return fmt.Sprintf("%s %s", insnName[dc.Opcode], dc.dumpOperand(dc.Src))
+}
+
+func (dc *DisContext) dump2OpInsn() string {
 	return fmt.Sprintf("%s %s,%s", insnName[dc.Opcode],
-		dc.dumpImm(), dc.dumpReg())
-}
-
-func dumpInsnReg(dc *DisContext) string {
-	return fmt.Sprintf("%s %s", insnName[dc.Opcode], dc.dumpReg())
+		dc.dumpOperand(dc.Src), dc.dumpOperand(dc.Dst))
 }
