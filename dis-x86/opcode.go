@@ -84,6 +84,11 @@ func (dc *DisContext) parseOpcode() {
 		dc.Reg = op - 0xb0
 		dc.setInsnOperandSize(OpSizeByte)
 		dc.set2Operand(OpMov, OperandImm, OperandReg)
+	// mov (immediate word or into byte register)
+	case 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xdd, 0xbe, 0xbf:
+		dc.ImmOff = dc.getImmediate()
+		dc.Reg = op - 0xb8
+		dc.set2Operand(OpMov, OperandImm, OperandReg)
 	}
 }
 
