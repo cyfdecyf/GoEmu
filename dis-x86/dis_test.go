@@ -17,7 +17,7 @@ func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err os.Error) {
 
 func checkDump(dump string, expected string, t *testing.T) {
 	if dump != expected {
-		t.Errorf("expected: %s\tgot: %s\n", expected, dump)
+		t.Errorf("expect: %s\nget:    %s\n", expected, dump)
 	}
 }
 
@@ -127,4 +127,14 @@ func TestPushPop(t *testing.T) {
 
 	dc.NextInsn()
 	checkDump(dc.DumpInsn(), "pop %ds", t)
+}
+
+func TestMov(t *testing.T) {
+	binary := SliceReader([]byte{
+		0xb0, 0xeb, // mov $0xeb,%al
+	})
+	dc := NewDisContext(binary)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov $0xeb,%al", t)
 }

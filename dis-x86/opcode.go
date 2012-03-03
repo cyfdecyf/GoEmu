@@ -70,6 +70,15 @@ func (dc *DisContext) parseOpcode() {
 	case 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f:
 		dc.Reg = op - 0x58
 		dc.set1Operand(OpPop, OperandReg)
+
+	/* Memory instructions */
+
+	// mov (immediate byte into byte register)
+	case 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7:
+		dc.Imm = int32(dc.nextByte())
+		dc.Reg = op - 0xb0
+		dc.setInsnOperandSize(OpSizeByte)
+		dc.set2Operand(OpMov, OperandImm, OperandReg)
 	}
 }
 
