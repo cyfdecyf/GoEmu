@@ -4,7 +4,7 @@ Documents
 The 7 volumes Intel Manual. I'm using the version released in Dec. 2011.
 For simplicity, I will call them Vol1, Vol2A, Vol2B etc.
 
-Other onlines resources maybe easy to get started.
+Other online resources maybe easy to get started.
 
 - [X86-64 Instruction Encoding](http://wiki.osdev.org/X86-64_Instruction_Encoding)
 - [x86-64 Tour of Intel Manuals](http://x86asm.net/articles/x86-64-tour-of-intel-manuals/)
@@ -26,9 +26,9 @@ These attributes are selected by the D flag in segment descriptor.
    1    |      32-bit   |     32-bit
    0    |      16-bit   |     16-bit
 
-- In Real-address, virtual-8086 or SMM mode, both attriubtes are always 16-bits.
+- In Real-address, virtual-8086 or SMM mode, both attributes are always 16-bits.
 
-Source and dstination operands include:
+Source and destination operands include:
 
 - immediate operand (only in source operand)
 - register
@@ -46,7 +46,7 @@ address-size  | segment offset | displacement
 Prefix
 ======
 
-- **Operand-size override prefix** can overide the operand and address size for
+- **Operand-size override prefix** can override the operand and address size for
   a particular instruction.
 
   > The operand-size override prefix allows a program to switch between 16- and

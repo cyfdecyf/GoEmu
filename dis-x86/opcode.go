@@ -28,10 +28,7 @@ const (
 type parseOp func(byte, *DisContext)
 
 func (dc *DisContext) parseOpcode() {
-	op := dc.nextByte()
-	dc.RawOpCode[0] = op
-
-	switch op {
+	switch op := dc.nextByte(); op {
 	// Instruction will be grouped accord to function, and ordered
 	// numerically.  But if it's possible to combine parsing, the group and
 	// order rule will be broken.

@@ -12,10 +12,19 @@ func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err os.Error) {
 	for i = 0; i < len(p) && i < (len(buf)-int(off)); i++ {
 		p[i] = buf[int(off)+i]
 	}
+	if i < len(p) {
+		return i, os.EOF
+	}
 	return i, nil
 }
 
 func checkDump(dc *DisContext, expected string, t *testing.T) {
+	if dc == nil {
+		if expected != "" {
+			t.Errorf("EOF not handled correctly\n") 
+		}
+		return
+	}
 	dump := dc.DumpInsn()
 	if dump != expected {
 		t.Errorf("expect: %s\nget:    %s\n", expected, dump)
@@ -60,30 +69,17 @@ func TestArith(t *testing.T) {
 		0x03, 0x04, 0x8d, 0x80, 0xa0, 0x2c, 0xc0, // add -0x3fd35f80(,%ecx,4),%eax
 	})
 	dc := NewDisContext(binary)
-
 	dc.NextInsn()
 	if dc.Opcode != OpAdd {
 		t.Error("Add arithmetic insn not detected")
 	}
 	checkDump(dc, "add %al,(%eax)", t)
-
-	dc.NextInsn()
-	checkDump(dc, "add %al,-0xd(%ebp)", t)
-
-	dc.NextInsn()
-	checkDump(dc, "add -0x1b(%eax,%ebp,1),%dl", t)
-
-	dc.NextInsn()
-	checkDump(dc, "add 0x1,%eax", t)
-
-	dc.NextInsn()
-	checkDump(dc, "add $0x125432,%eax", t)
-
-	dc.NextInsn()
-	checkDump(dc, "add 0x8(%ebp),%eax", t)
-
-	dc.NextInsn()
-	checkDump(dc, "add -0x3fd35f80(,%ecx,4),%eax", t)
+	checkDump(dc.NextInsn(), "add %al,-0xd(%ebp)", t)
+	checkDump(dc.NextInsn(), "add -0x1b(%eax,%ebp,1),%dl", t)
+	checkDump(dc.NextInsn(), "add 0x1,%eax", t)
+	checkDump(dc.NextInsn(), "add $0x125432,%eax", t)
+	checkDump(dc.NextInsn(), "add 0x8(%ebp),%eax", t)
+	checkDump(dc.NextInsn(), "add -0x3fd35f80(,%ecx,4),%eax", t)
 }
 
 func TestIncDec(t *testing.T) {
@@ -93,15 +89,9 @@ func TestIncDec(t *testing.T) {
 		0x46, // inc %esi
 	})
 	dc := NewDisContext(binary)
-
-	dc.NextInsn()
-	checkDump(dc, "inc %eax", t)
-
-	dc.NextInsn()
-	checkDump(dc, "dec %eax", t)
-
-	dc.NextInsn()
-	checkDump(dc, "inc %esi", t)
+	checkDump(dc.NextInsn(), "inc %eax", t)
+	checkDump(dc.NextInsn(), "dec %eax", t)
+	checkDump(dc.NextInsn(), "inc %esi", t)
 }
 
 func TestPushPop(t *testing.T) {
@@ -115,27 +105,14 @@ func TestPushPop(t *testing.T) {
 		0x1f, // pop %ds
 	})
 	dc := NewDisContext(binary)
-
-	dc.NextInsn()
-	checkDump(dc, "push %esi", t)
-
-	dc.NextInsn()
-	checkDump(dc, "push %edi", t)
-
-	dc.NextInsn()
-	checkDump(dc, "pop %ebp", t)
-
-	dc.NextInsn()
-	checkDump(dc, "pop %ebx", t)
-
-	dc.NextInsn()
-	checkDump(dc, "push %ss", t)
-
-	dc.NextInsn()
-	checkDump(dc, "push %ds", t)
-
-	dc.NextInsn()
-	checkDump(dc, "pop %ds", t)
+	checkDump(dc.NextInsn(), "push %esi", t)
+	checkDump(dc.NextInsn(), "push %edi", t)
+	checkDump(dc.NextInsn(), "pop %ebp", t)
+	checkDump(dc.NextInsn(), "pop %ebx", t)
+	checkDump(dc.NextInsn(), "push %ss", t)
+	checkDump(dc.NextInsn(), "push %ds", t)
+	checkDump(dc.NextInsn(), "pop %ds", t)
+	checkDump(dc.NextInsn(), "", t)
 }
 
 func TestMov(t *testing.T) {
@@ -152,34 +129,14 @@ func TestMov(t *testing.T) {
 		0x8e, 0xd9, // mov %ecx,%ds
 	})
 	dc := NewDisContext(binary)
-
-	dc.NextInsn()
-	checkDump(dc, "mov $0xeb,%al", t)
-
-	dc.NextInsn()
-	checkDump(dc, "mov $0x2f,%ecx", t)
-
-	dc.NextInsn()
-	checkDump(dc, "mov 0xc02c9660,%al", t)
-
-	dc.NextInsn()
-	checkDump(dc, "mov 0xc02bf69c,%eax", t)
-
-	dc.NextInsn()
-	checkDump(dc, "mov %eax,0xc0310124", t)
-
-	dc.NextInsn()
-	checkDump(dc, "mov %ebx,%eax", t)
-
-	dc.NextInsn()
-	checkDump(dc, "mov -0x14(%ebp),%al", t)
-
-	dc.NextInsn()
-	checkDump(dc, "mov %ss,%eax", t)
-
-	dc.NextInsn()
-	checkDump(dc, "mov %eax,%ds", t)
-
-	dc.NextInsn()
-	checkDump(dc, "mov %ecx,%ds", t)
+	checkDump(dc.NextInsn(), "mov $0xeb,%al", t)
+	checkDump(dc.NextInsn(), "mov $0x2f,%ecx", t)
+	checkDump(dc.NextInsn(), "mov 0xc02c9660,%al", t)
+	checkDump(dc.NextInsn(), "mov 0xc02bf69c,%eax", t)
+	checkDump(dc.NextInsn(), "mov %eax,0xc0310124", t)
+	checkDump(dc.NextInsn(), "mov %ebx,%eax", t)
+	checkDump(dc.NextInsn(), "mov -0x14(%ebp),%al", t)
+	checkDump(dc.NextInsn(), "mov %ss,%eax", t)
+	checkDump(dc.NextInsn(), "mov %eax,%ds", t)
+	checkDump(dc.NextInsn(), "mov %ecx,%ds", t)
 }

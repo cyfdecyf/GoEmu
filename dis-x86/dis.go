@@ -115,8 +115,6 @@ type Instruction struct {
 	// dynamic information about the CPU.
 	sizeOverride byte
 
-	RawOpCode [3]byte
-
 	// Displacement size is associated with ModR/M and SIB byte, can't easily
 	// encode the size information in operand type. So store it here.
 	DispSize byte
@@ -240,8 +238,17 @@ func (dc *DisContext) SetProtected(v bool) {
 	dc.updateOperandAddressSize()
 }
 
-// Parse 1 instruction
-func (dc *DisContext) NextInsn() {
+// Parse 1 instruction. Return nil if no more data available.
+func (dc *DisContext) NextInsn() *DisContext {
+	// Error handling
+	defer func() {
+		if err := recover(); err != nil {
+			if err != os.EOF {
+				log.Println("work failed:", err)
+			}
+			return
+		}
+	}()
 	dc.DispSize = 0
 	dc.hasSIB = false
 	dc.Prefix = 0
@@ -249,13 +256,14 @@ func (dc *DisContext) NextInsn() {
 
 	dc.parsePrefix()
 	dc.parseOpcode()
+	return dc
 }
 
 /* Reading binary */
 
 func (dc *DisContext) getBytes(buf []byte) {
 	n, err := dc.binary.ReadAt(buf, dc.offset)
-	if err != nil && err != os.EOF {
+	if err != nil {
 		panic(err)
 	}
 	dc.offset += int64(n)
@@ -267,7 +275,7 @@ var (
 	buflong = make([]byte, 4)
 )
 
-// Get the next byte in the instrucion stream
+// Get the next byte in the instruction stream
 func (dc *DisContext) nextByte() byte {
 	dc.getBytes(bufbyte)
 	return bufbyte[0]
