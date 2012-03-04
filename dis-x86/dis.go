@@ -67,6 +67,9 @@ const (
 	OperandRm
 	OperandImm
 	OperandImmByte
+	// The size of the memory offset is determined by the address-size
+	// attribute. The operand type for memory offset here specifies the size of
+	// the data.
 	OperandMOff
 	OperandMOffByte
 )
@@ -374,4 +377,14 @@ func (dc *DisContext) getDisp(size byte) {
 		dc.DispSize = OpSizeLong
 	}
 	return
+}
+
+// Get memory offset
+func (dc *DisContext) getMOffset() {
+	switch dc.EffectiveAddressSize() {
+	case OpSizeWord:
+		dc.ImmOff = int32(dc.nextWord())
+	case OpSizeLong:
+		dc.ImmOff = int32(dc.nextLong())
+	}
 }

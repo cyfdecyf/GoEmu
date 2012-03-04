@@ -149,15 +149,15 @@ func (dc *DisContext) parsePushPopSeg(op byte) {
 
 var movEaxTable = [...]([2]byte){
 	// Starts from 0xa0
-	[2]byte{OperandMOffByte, OperandReg},
+	[2]byte{OperandMOffByte, OperandRegByte},
 	[2]byte{OperandMOff, OperandReg},
-	[2]byte{OperandReg, OperandMOffByte},
+	[2]byte{OperandRegByte, OperandMOffByte},
 	[2]byte{OperandReg, OperandMOff},
 }
 
 func (dc *DisContext) parseMovEax(op byte) {
 	te := movEaxTable[op-0xa0]
-	dc.ImmOff = int32(dc.nextLong())
+	dc.getMOffset()
 	dc.Reg = Eax
 	dc.set2Operand(OpMov, te[0], te[1])
 }
