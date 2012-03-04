@@ -62,9 +62,12 @@ func (dc *DisContext) parseOpcode() {
 
 	/* Stack instructions */
 
-	// segment related push/pop
+	// segreg push/pop
 	case 0x06, 0x16, 0x07, 0x17, 0x0e, 0x1e, 0x1f:
-		dc.parsePushPopSeg(op)
+		// Refer to Table B-13 on page B-18 of Vol 2C.
+		opcode := OpPush + int(op&0x01)
+		dc.Reg = op >> 3 & 0x03
+		dc.set1Operand(opcode, OperandSegReg)
 
 	/* Memory instructions */
 
@@ -108,13 +111,6 @@ func (dc *DisContext) parseArith(op byte) {
 	default:
 		log.Panicln("parseArith: byte 0x%x: error", op)
 	}
-}
-
-func (dc *DisContext) parsePushPopSeg(op byte) {
-	// Refer to Table B-13 on page B-18 of Vol 2C.
-	opcode := OpPush + int(op&0x01)
-	dc.Reg = op >> 3 & 0x03
-	dc.set1Operand(opcode, OperandSegReg)
 }
 
 func (dc *DisContext) parseMovEax(op byte) {
