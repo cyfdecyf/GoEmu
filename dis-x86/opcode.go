@@ -36,13 +36,10 @@ func (dc *DisContext) parseOpcode() {
 	/* Arithmetic and logic instructions */
 
 	// arith
-	case 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d:
-		fallthrough
-	case 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d:
-		fallthrough
-	case 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d:
-		fallthrough
-	case 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d:
+	case 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d,
+		0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d,
+		0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d:
 		dc.parseArith(op)
 
 	// inc
@@ -58,9 +55,7 @@ func (dc *DisContext) parseOpcode() {
 
 	// segment related push/pop
 	case 0x06, 0x16, 0x07, 0x17, 0x0e, 0x1e, 0x1f:
-		segopmap := segStackOpcode[op]
-		dc.Reg = segopmap[1]
-		dc.set1Operand(int(segopmap[0]), OperandReg)
+		dc.parsePushPopSeg(op)
 
 	// push
 	case 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57:
@@ -73,6 +68,10 @@ func (dc *DisContext) parseOpcode() {
 
 	/* Memory instructions */
 
+	// mov reg
+	case 0x88, 0x89, 0x8a, 0x8b:
+		dc.parseMovModRM(op)
+
 	// mov offset,ax (0xa0, a1)
 	// mov ax,offset (0xa2, a3)
 	case 0xa0, 0xa1, 0xa2, 0xa3:
@@ -82,11 +81,10 @@ func (dc *DisContext) parseOpcode() {
 	case 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7:
 		dc.ImmOff = int32(dc.nextByte())
 		dc.Reg = op - 0xb0
-		dc.setInsnOperandSize(OpSizeByte)
-		dc.set2Operand(OpMov, OperandImm, OperandReg)
+		dc.set2Operand(OpMov, OperandImmByte, OperandRegByte)
 	// mov (immediate word or into byte register)
 	case 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xdd, 0xbe, 0xbf:
-		dc.ImmOff = dc.getImmediate()
+		dc.getImmediate()
 		dc.Reg = op - 0xb8
 		dc.set2Operand(OpMov, OperandImm, OperandReg)
 	}
@@ -129,30 +127,51 @@ func (dc *DisContext) parseArith(op byte) {
 		dc.set2Operand(opcode, OperandImm, OperandReg)
 	case 5:
 		dc.Reg = Eax
-		dc.ImmOff = dc.getImmediate()
+		dc.getImmediate()
 		dc.set2Operand(opcode, OperandImm, OperandReg)
 	default:
 		log.Panicln("parseArith: byte 0x%x: error", op)
 	}
 }
 
-var segStackOpcode = map[byte]([2]byte){
+var pushPopSegTable = map[byte]([2]byte){
 	0x06: [2]byte{OpPush, ES}, 0x07: [2]byte{OpPop, ES},
 	0x16: [2]byte{OpPush, SS}, 0x17: [2]byte{OpPop, SS},
 	0x0e: [2]byte{OpPush, CS},       // 0x0f: 2 byte opcode escape
 	0x1e: [2]byte{OpPush, DS}, 0x1f: [2]byte{OpPop, DS},
 }
 
-var movA0A3Table = map[byte]([2]byte){
-	0xa0: [2]byte{OperandMOffByte, OperandReg},
-	0xa1: [2]byte{OperandMOffCalc, OperandReg},
-	0xa2: [2]byte{OperandReg, OperandMOffByte},
-	0xa3: [2]byte{OperandReg, OperandMOffCalc},
+func (dc *DisContext) parsePushPopSeg(op byte) {
+	te := pushPopSegTable[op]
+	dc.Reg = te[1]
+	dc.set1Operand(int(te[0]), OperandReg)
+}
+
+var movEaxTable = [...]([2]byte){
+	// Starts from 0xa0
+	[2]byte{OperandMOffByte, OperandReg},
+	[2]byte{OperandMOff, OperandReg},
+	[2]byte{OperandReg, OperandMOffByte},
+	[2]byte{OperandReg, OperandMOff},
 }
 
 func (dc *DisContext) parseMovEax(op byte) {
-	te := movA0A3Table[op]
+	te := movEaxTable[op-0xa0]
 	dc.ImmOff = int32(dc.nextLong())
 	dc.Reg = Eax
+	dc.set2Operand(OpMov, te[0], te[1])
+}
+
+var movModRMTable = [...]([2]byte){
+	// Starts from 0x88
+	[2]byte{OperandRegByte, OperandRm},
+	[2]byte{OperandReg, OperandRm},
+	[2]byte{OperandRm, OperandRegByte},
+	[2]byte{OperandRm, OperandReg},
+}
+
+func (dc *DisContext) parseMovModRM(op byte) {
+	te := movModRMTable[op-0x88]
+	dc.parseModRM()
 	dc.set2Operand(OpMov, te[0], te[1])
 }

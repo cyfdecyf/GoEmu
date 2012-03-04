@@ -51,19 +51,24 @@ const (
 )
 
 const (
-	OpSizeCalc byte = iota // zero, means need to calculate the size
-	OpSizeByte             // Starts from 1 to make size override testing easier
+	OpSizeCalc byte = iota // zero, means need to calculate the size or none
+	OpSizeByte             // size starts from 1, so 0 can be used for none
 	OpSizeWord
 	OpSizeLong // Long = DoubleWord
 	OpSizeQuad
 )
+const OpSizeNone byte = 0
 
+// For operand type that does not have size suffix, it means the size depends
+// on operand-size attribute
 const (
 	OperandReg byte = iota
+	OperandRegByte
 	OperandRm
 	OperandImm
-	OperandMOffByte // 1 byte memory offset
-	OperandMOffCalc // size depends on address-size attribute
+	OperandImmByte
+	OperandMOff
+	OperandMOffByte
 )
 
 type Instruction struct {
@@ -101,8 +106,10 @@ type Instruction struct {
 
 	RawOpCode [3]byte
 
-	hasDisp bool
-	hasSIB  bool
+	// Displacement size is associated with ModR/M and SIB byte, can't easily
+	// encode the size information in operand type. So store it here.
+	DispSize byte
+	hasSIB   bool
 }
 
 func (insn *Instruction) set1Operand(op int, src byte) {
@@ -214,7 +221,7 @@ func (dc *DisContext) SetProtected(v bool) {
 
 // Parse 1 instruction
 func (dc *DisContext) NextInsn() {
-	dc.hasDisp = false
+	dc.DispSize = 0
 	dc.hasSIB = false
 	dc.Prefix = 0
 	dc.sizeOverride = 0
@@ -276,7 +283,7 @@ func parseBitField(b byte) (mod, reg, rm byte) {
 
 func (dc *DisContext) parseModRM() {
 	dc.Mod, dc.Reg, dc.Rm = parseBitField(dc.nextByte())
-	// XXX Is the addressing mode os ModR/M byte affected by the address-size
+	// XXX Is the addressing mode of ModR/M byte affected by the address-size
 	// attribute?
 	switch dc.AddressSize {
 	case OpSizeWord:
@@ -302,14 +309,14 @@ func (dc *DisContext) parseAfterModRM32bit() {
 	case 0:
 		if dc.Rm == 5 {
 			dc.Disp = int32(dc.nextLong())
-			dc.hasDisp = true
+			dc.DispSize = OpSizeLong
 		}
 	case 1:
 		dc.Disp = int32(dc.nextByte())
-		dc.hasDisp = true
+		dc.DispSize = OpSizeByte
 	case 2:
 		dc.Disp = int32(dc.nextLong())
-		dc.hasDisp = true
+		dc.DispSize = OpSizeLong
 	}
 }
 
@@ -318,15 +325,12 @@ func (dc *DisContext) parseAfterModRM16bit() {
 	switch dc.Mod {
 	case 0:
 		if dc.Rm == 6 {
-			dc.Disp = int32(dc.nextWord())
-			dc.hasDisp = true
+			dc.getDisp(OpSizeWord)
 		}
 	case 1:
-		dc.Disp = int32(dc.nextByte())
-		dc.hasDisp = true
+		dc.getDisp(OpSizeByte)
 	case 2:
-		dc.Disp = int32(dc.nextWord())
-		dc.hasDisp = true
+		dc.getDisp(OpSizeWord)
 	}
 }
 
@@ -336,12 +340,11 @@ func (dc *DisContext) parseSIB() {
 	dc.hasSIB = true
 
 	if dc.Base == 5 {
-		dc.hasDisp = true
 		switch dc.Mod {
 		case 0, 2:
-			dc.Disp = int32(dc.nextLong())
+			dc.getDisp(OpSizeLong)
 		case 1:
-			dc.Disp = int32(dc.nextByte())
+			dc.getDisp(OpSizeByte)
 		}
 	}
 }
@@ -349,12 +352,26 @@ func (dc *DisContext) parseSIB() {
 /* Immediate value */
 
 // Only use this function for immediate value larger than a byte
-func (dc *DisContext) getImmediate() (r int32) {
+func (dc *DisContext) getImmediate() {
 	switch dc.EffectiveOperandSize() {
 	case OpSizeWord:
-		r = int32(dc.nextWord())
+		dc.ImmOff = int32(dc.nextWord())
 	case OpSizeLong:
-		r = int32(dc.nextLong())
+		dc.ImmOff = int32(dc.nextLong())
+	}
+}
+
+func (dc *DisContext) getDisp(size byte) {
+	switch size {
+	case OpSizeByte:
+		dc.Disp = int32(dc.nextByte())
+		dc.DispSize = OpSizeLong
+	case OpSizeWord:
+		dc.Disp = int32(dc.nextWord())
+		dc.DispSize = OpSizeWord
+	case OpSizeLong:
+		dc.Disp = int32(dc.nextLong())
+		dc.DispSize = OpSizeLong
 	}
 	return
 }

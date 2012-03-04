@@ -66,12 +66,24 @@ func (dc *DisContext) dumpReg() string {
 	return dc.formatReg(dc.Reg)
 }
 
-func (dc *DisContext) dumpDisp() string {
-	return fmt.Sprintf("%#x", dc.Disp)
+func dumpSignedValue(size byte, val int32) (dump string) {
+	switch size {
+	case OpSizeByte:
+		dump = fmt.Sprintf("%#x", int8(val))
+	case OpSizeWord:
+		dump = fmt.Sprintf("%#x", int16(val))
+	case OpSizeLong:
+		dump = fmt.Sprintf("%#x", val)
+	}
+	return
 }
 
-func (dc *DisContext) dumpImm() string {
-	return fmt.Sprintf("$%#x", dc.ImmOff)
+func (dc *DisContext) dumpDisp() (dump string) {
+	return dumpSignedValue(dc.DispSize, dc.Disp)
+}
+
+func (dc *DisContext) dumpImm() (dump string) {
+	return "$" + dumpSignedValue(OpSizeLong, dc.ImmOff)
 }
 
 func (dc *DisContext) dumpOffset() string {
@@ -80,6 +92,10 @@ func (dc *DisContext) dumpOffset() string {
 }
 
 func (dc *DisContext) dumpRm() (dump string) {
+	if dc.Mod == 3 {
+		return dc.formatReg(dc.Rm)
+	}
+
 	if dc.EffectiveAddressSize() == OpSizeLong {
 		return dc.dumpRm32bit()
 	}
@@ -87,11 +103,7 @@ func (dc *DisContext) dumpRm() (dump string) {
 }
 
 func (dc *DisContext) dumpRm32bit() (dump string) {
-	if dc.Mod == 3 {
-		return dc.formatReg(dc.Rm)
-	}
-
-	if dc.hasDisp {
+	if dc.DispSize != 0 {
 		dump = dc.dumpDisp()
 	}
 	if dc.hasSIB {
@@ -135,12 +147,16 @@ func (dc *DisContext) DumpInsn() (dump string) {
 
 func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	switch operand {
-	case OperandMOffByte, OperandMOffCalc:
+	case OperandMOffByte, OperandMOff:
 		dump = dc.dumpOffset()
 	case OperandImm:
 		dump = dc.dumpImm()
+	case OperandImmByte:
+		dump = dc.dumpImm()
 	case OperandReg:
 		dump = dc.dumpReg()
+	case OperandRegByte:
+		dump = "%" + regName8[dc.Reg]
 	case OperandRm:
 		dump = dc.dumpRm()
 	}
