@@ -74,7 +74,8 @@ func (dc *DisContext) parseOpcode() {
 	// mov eax
 	case 0xa0, 0xa1, 0xa2, 0xa3:
 		dc.parseMovEax(op)
-	case 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, // mov (immediate byte into byte register)
+	case
+		0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, // mov (immediate byte into byte register)
 		0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xdd, 0xbe, 0xbf: // mov (immediate word or long into byte register)
 		dc.Reg = op & 0x07
 		wField := op & 0x0f >> 3
@@ -103,23 +104,19 @@ func (dc *DisContext) parseArith(op byte) {
 func (dc *DisContext) parsePushPopSeg(op byte) {
 	// Refer to Table B-13 on page B-18 of Vol 2C.
 	opcode := OpPush + int(op&0x01)
-	dc.Reg = op >> 3 & 0x3
+	dc.Reg = op >> 3 & 0x03
 	dc.set1Operand(opcode, OperandSegReg)
 }
 
-var movEaxTable = [...]([2]byte){
-	// Starts from 0xa0
-	[2]byte{OperandMOffByte, OperandRegByte},
-	[2]byte{OperandMOff, OperandReg},
-	[2]byte{OperandRegByte, OperandMOffByte},
-	[2]byte{OperandReg, OperandMOff},
-}
-
 func (dc *DisContext) parseMovEax(op byte) {
-	te := movEaxTable[op-0xa0]
 	dc.getMOffset()
 	dc.Reg = Eax
-	dc.set2Operand(OpMov, te[0], te[1])
+	wField := op & 0x01
+	if op&0x02 == 0 {
+		dc.set2Operand(OpMov, OperandMOffByte-wField, OperandRegByte-wField)
+	} else {
+		dc.set2Operand(OpMov, OperandRegByte-wField, OperandMOffByte-wField)
+	}
 }
 
 func (dc *DisContext) parseMovModRM(op byte) {
