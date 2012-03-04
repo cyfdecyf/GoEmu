@@ -140,9 +140,9 @@ const regToRm = 0
 
 func (insn *Instruction) set2OperandModRM(op int, wField, dField byte) {
 	if dField == regToRm {
-		insn.set2Operand(op, OperandRegByte - wField, OperandRm)
+		insn.set2Operand(op, OperandRegByte-wField, OperandRm)
 	} else {
-		insn.set2Operand(op, OperandRm, OperandRegByte - wField)
+		insn.set2Operand(op, OperandRm, OperandRegByte-wField)
 	}
 }
 
