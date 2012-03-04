@@ -136,6 +136,16 @@ func (insn *Instruction) set2Operand(op int, src, dst byte) {
 	insn.Noperand = 2
 }
 
+const regToRm = 0
+
+func (insn *Instruction) set2OperandModRM(op int, wField, dField byte) {
+	if dField == regToRm {
+		insn.set2Operand(op, OperandRegByte - wField, OperandRm)
+	} else {
+		insn.set2Operand(op, OperandRm, OperandRegByte - wField)
+	}
+}
+
 func (insn *Instruction) insnOperandSize() byte {
 	return insn.sizeOverride & 0x0f
 }

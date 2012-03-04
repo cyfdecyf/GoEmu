@@ -90,11 +90,7 @@ func (dc *DisContext) parseArith(op byte) {
 	switch op & 0xf {
 	case 0, 1, 2, 3:
 		dc.parseModRM()
-		if op&0x2 == 0 { // bit 2 indicates the direction
-			dc.set2Operand(opcode, OperandRegByte-wField, OperandRm)
-		} else {
-			dc.set2Operand(opcode, OperandRm, OperandRegByte-wField)
-		}
+		dc.set2OperandModRM(opcode, wField, op&0x02)
 	case 4, 5:
 		dc.Reg = Eax
 		dc.getImmediate(OperandImmByte - wField)
@@ -126,16 +122,7 @@ func (dc *DisContext) parseMovEax(op byte) {
 	dc.set2Operand(OpMov, te[0], te[1])
 }
 
-var movModRMTable = [...]([2]byte){
-	// Starts from 0x88
-	[2]byte{OperandRegByte, OperandRm},
-	[2]byte{OperandReg, OperandRm},
-	[2]byte{OperandRm, OperandRegByte},
-	[2]byte{OperandRm, OperandReg},
-}
-
 func (dc *DisContext) parseMovModRM(op byte) {
-	te := movModRMTable[op-0x88]
 	dc.parseModRM()
-	dc.set2Operand(OpMov, te[0], te[1])
+	dc.set2OperandModRM(OpMov, op&0x01, op&0x02)
 }
