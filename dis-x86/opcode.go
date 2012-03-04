@@ -44,7 +44,7 @@ func (dc *DisContext) parseOpcode() {
 
 	// inc
 	case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47:
-		dc.Reg = op - 0x40
+		dc.Reg = op & 0xf
 		dc.set1Operand(OpInc, OperandReg)
 	// dec
 	case 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f:
@@ -59,7 +59,7 @@ func (dc *DisContext) parseOpcode() {
 
 	// push
 	case 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57:
-		dc.Reg = op - 0x50
+		dc.Reg = op & 0x0f
 		dc.set1Operand(OpPush, OperandReg)
 	// pop
 	case 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f:
@@ -79,12 +79,12 @@ func (dc *DisContext) parseOpcode() {
 
 	// mov (immediate byte into byte register)
 	case 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7:
-		dc.ImmOff = int32(dc.nextByte())
-		dc.Reg = op - 0xb0
+		dc.getImmediate(OperandImmByte)
+		dc.Reg = op & 0x0f
 		dc.set2Operand(OpMov, OperandImmByte, OperandRegByte)
-	// mov (immediate word or into byte register)
+	// mov (immediate word or long into byte register)
 	case 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xdd, 0xbe, 0xbf:
-		dc.getImmediate()
+		dc.getImmediate(OperandImm)
 		dc.Reg = op - 0xb8
 		dc.set2Operand(OpMov, OperandImm, OperandReg)
 	}
@@ -113,22 +113,19 @@ func (dc *DisContext) parseArith(op byte) {
 		opcode = arithOpcode2[h]
 	}
 
+	byteBit := l & 0x1
 	switch l {
 	case 0, 1, 2, 3:
 		dc.parseModRM()
-		if l < 2 {
-			dc.set2Operand(opcode, OperandReg, OperandRm)
+		if l&0x2 == 0 { // bit 2 indicates the direction
+			dc.set2Operand(opcode, OperandRegByte-byteBit, OperandRm)
 		} else {
-			dc.set2Operand(opcode, OperandRm, OperandReg)
+			dc.set2Operand(opcode, OperandRm, OperandRegByte-byteBit)
 		}
-	case 4:
-		dc.Reg = Al
-		dc.ImmOff = int32(dc.nextByte())
-		dc.set2Operand(opcode, OperandImm, OperandReg)
-	case 5:
+	case 4, 5:
 		dc.Reg = Eax
-		dc.getImmediate()
-		dc.set2Operand(opcode, OperandImm, OperandReg)
+		dc.getImmediate(OperandImmByte - byteBit)
+		dc.set2Operand(opcode, OperandImmByte-byteBit, OperandRegByte-byteBit)
 	default:
 		log.Panicln("parseArith: byte 0x%x: error", op)
 	}

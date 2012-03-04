@@ -60,7 +60,8 @@ const (
 const OpSizeNone byte = 0
 
 // For operand type that does not have size suffix, it means the size depends
-// on operand-size attribute
+// on operand-size attribute.
+// The same operand type with different suffix should be ordered.
 const (
 	OperandReg byte = iota
 	OperandRegByte
@@ -355,12 +356,19 @@ func (dc *DisContext) parseSIB() {
 /* Immediate value */
 
 // Only use this function for immediate value larger than a byte
-func (dc *DisContext) getImmediate() {
-	switch dc.EffectiveOperandSize() {
-	case OpSizeWord:
-		dc.ImmOff = int32(dc.nextWord())
-	case OpSizeLong:
-		dc.ImmOff = int32(dc.nextLong())
+func (dc *DisContext) getImmediate(ot byte) {
+	switch ot {
+	case OperandImm:
+		switch dc.EffectiveOperandSize() {
+		case OpSizeWord:
+			dc.ImmOff = int32(dc.nextWord())
+		case OpSizeLong:
+			dc.ImmOff = int32(dc.nextLong())
+		}
+	case OperandImmByte:
+		dc.ImmOff = int32(dc.nextByte())
+	default:
+		log.Fatalf("Immediate operand type wrong %d\n", ot)
 	}
 }
 
