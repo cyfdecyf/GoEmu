@@ -2,6 +2,7 @@ Documents
 =========
 
 The 7 volumes Intel Manual. I'm using the version released in Dec. 2011.
+For simplicity, I will call them Vol 1, Vol 2A, 2B etc.
 
 Other onlines resources maybe easy to get started.
 
@@ -95,6 +96,12 @@ From A.2.3 Register Codes
 
 - `eXX` for 16 or 32-bit size, eg. eAX can be AX or EAX
 - `rXX` for 16, 32 or 64-bit size
+
+Instruction formats and encoding
+--------------------------------
+
+Intel Manual 2C Appendix B Section B.2 lists all the instruction encoding with
+all the special fields.
 
 What's Group 1?
 ---------------

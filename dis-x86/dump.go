@@ -25,10 +25,15 @@ var regName = [...]string{
 	Ebp: "bp",
 	Esi: "si",
 	Edi: "di",
-	ES:  "es",
-	SS:  "ss",
-	CS:  "cs",
-	DS:  "ds",
+}
+
+var segRegName = [...]string{
+	ES: "es",
+	CS: "cs",
+	SS: "ss",
+	DS: "ds",
+	FS: "fs",
+	GS: "gs",
 }
 
 var regName8 = [...]string{
@@ -44,9 +49,6 @@ var regName8 = [...]string{
 
 // Return the string name of a register
 func (dc *DisContext) formatReg(reg byte) (name string) {
-	if reg >= ES {
-		return "%" + regName[reg]
-	}
 	switch dc.EffectiveOperandSize() {
 	case OpSizeByte:
 		name = regName8[reg]
@@ -159,6 +161,8 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 		dump = "%" + regName8[dc.Reg]
 	case OperandRm:
 		dump = dc.dumpRm()
+	case OperandSegReg:
+		dump = "%" + segRegName[dc.Reg]
 	}
 	return
 }

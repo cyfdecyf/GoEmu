@@ -21,7 +21,7 @@ DisContext. This is intended to make it useful for different purpose.
 
 var debug = log.New(os.Stderr, "DEBUG ", log.Lshortfile)
 
-/* Register order is the same with Table 3.1 Register Codes in Intel Manual 2A
+/* Register order is the same with Table B-2 of Section B.1.4.2 in Vol 2C.
    This makes it easy to get operand for instructions with "+rb, +rw, +rd,
    +ro" opcode column. */
 const (
@@ -33,10 +33,6 @@ const (
 	Ebp
 	Esi
 	Edi
-	ES
-	SS
-	CS
-	DS
 )
 
 const (
@@ -48,6 +44,16 @@ const (
 	Ch
 	Dh
 	Bh
+)
+
+/* Order confirms to Table B-8 in Intel Manual 2C. */
+const (
+	ES byte = iota
+	CS
+	SS
+	DS
+	FS
+	GS
 )
 
 const (
@@ -73,6 +79,7 @@ const (
 	// the data.
 	OperandMOff
 	OperandMOffByte
+	OperandSegReg = 10 // Segment register
 )
 
 type Instruction struct {

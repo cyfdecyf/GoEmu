@@ -104,17 +104,11 @@ func (dc *DisContext) parseArith(op byte) {
 	}
 }
 
-var pushPopSegTable = map[byte]([2]byte){
-	0x06: [2]byte{OpPush, ES}, 0x07: [2]byte{OpPop, ES},
-	0x16: [2]byte{OpPush, SS}, 0x17: [2]byte{OpPop, SS},
-	0x0e: [2]byte{OpPush, CS},       // 0x0f: 2 byte opcode escape
-	0x1e: [2]byte{OpPush, DS}, 0x1f: [2]byte{OpPop, DS},
-}
-
 func (dc *DisContext) parsePushPopSeg(op byte) {
-	te := pushPopSegTable[op]
-	dc.Reg = te[1]
-	dc.set1Operand(int(te[0]), OperandReg)
+	// Refer to Table B-13 on page B-18 of Vol 2C.
+	opcode := OpPush + int(op&0x01)
+	dc.Reg = op >> 3 & 0x3
+	dc.set1Operand(opcode, OperandSegReg)
 }
 
 var movEaxTable = [...]([2]byte){
