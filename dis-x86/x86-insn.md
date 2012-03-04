@@ -2,6 +2,7 @@ Documents
 =========
 
 The 7 volumes Intel Manual. I'm using the version released in Dec. 2011.
+For simplicity, I will call them Vol1, Vol2A, Vol2B etc.
 
 Other onlines resources maybe easy to get started.
 
@@ -11,7 +12,7 @@ Other onlines resources maybe easy to get started.
 Operand size and address-size attribute
 =======================================
 
-Refer to Intel Manual 1 3.6. This note only talks about 32-bit case.
+Refer to Vol1 3.6. This note only talks about 32-bit case.
 
 > In protected mode, every code segment has a default operand-size attribute and
 > address-size attribute.
@@ -55,13 +56,24 @@ Prefix
 Opcode
 ======
 
-Refer Intel Manual 2A Section 3.1.1 for how to interpret the instruction
+Refer Vol2A Section 3.1.1 for how to interpret the instruction
 reference.
+
+Instruction formats and encoding
+--------------------------------
+
+Vol2C Appendix B Section B.2 Table B-13 lists all the instruction encoding
+with all the special fields. We can use this table to generate all the
+possible instruction encodings. (Maybe diStorm's trie is built using this
+table.)
+
+The "A", "B" superscripts for the "mod" in Table B-13 means specific encoding
+of the mod field in ModR/M byte is reserved. Refer to B.1.5 Table B-12.
 
 Opcode map
 ----------
 
-Appendix A, B in Intel Manual 2C are very useful.
+Appendix A, B in Vol2C are very useful.
 
 A.3 is the complete opcode map for 1, 2, 3 byte opcodes. Understanding that
 opcode map needs some knowledge on the abbreviations used.

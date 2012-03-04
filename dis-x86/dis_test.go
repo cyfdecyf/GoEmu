@@ -17,7 +17,7 @@ func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err os.Error) {
 
 func checkDump(dump string, expected string, t *testing.T) {
 	if dump != expected {
-		t.Errorf("expected: %s\tgot: %s\n", expected, dump)
+		t.Errorf("expect: %s\nget:    %s\n", expected, dump)
 	}
 }
 
@@ -50,6 +50,9 @@ func TestPrefixParse(t *testing.T) {
 
 func TestArith(t *testing.T) {
 	binary := SliceReader([]byte{
+		0x00, 0x00, // add %al,(%eax)
+		0x00, 0x45, 0xf3, // add %al,-0xd(%ebp)
+		0x02, 0x54, 0x28, 0xe5, // add -0x1b(%eax,%ebp,1),%dl
 		0x03, 0x05, 0x01, 0x00, 0x00, 0x00, // add 0x1,%eax
 		0x05, 0x32, 0x54, 0x12, 0x00, // add $0x125432,%eax
 		0x03, 0x45, 0x08, // add 0x8(%ebp),%eax
@@ -61,20 +64,25 @@ func TestArith(t *testing.T) {
 	if dc.Opcode != OpAdd {
 		t.Error("Add arithmetic insn not detected")
 	}
-	dump := dc.DumpInsn()
-	checkDump(dump, "add 0x1,%eax", t)
+	checkDump(dc.DumpInsn(), "add %al,(%eax)", t)
 
 	dc.NextInsn()
-	dump = dc.DumpInsn()
-	checkDump(dump, "add $0x125432,%eax", t)
+	checkDump(dc.DumpInsn(), "add %al,-0xd(%ebp)", t)
 
 	dc.NextInsn()
-	dump = dc.DumpInsn()
-	checkDump(dump, "add 0x8(%ebp),%eax", t)
+	checkDump(dc.DumpInsn(), "add -0x1b(%eax,%ebp,1),%dl", t)
 
 	dc.NextInsn()
-	dump = dc.DumpInsn()
-	checkDump(dump, "add -0x3fd35f80(,%ecx,4),%eax", t)
+	checkDump(dc.DumpInsn(), "add 0x1,%eax", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "add $0x125432,%eax", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "add 0x8(%ebp),%eax", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "add -0x3fd35f80(,%ecx,4),%eax", t)
 }
 
 func TestIncDec(t *testing.T) {
@@ -127,4 +135,50 @@ func TestPushPop(t *testing.T) {
 
 	dc.NextInsn()
 	checkDump(dc.DumpInsn(), "pop %ds", t)
+}
+
+func TestMov(t *testing.T) {
+	binary := SliceReader([]byte{
+		0xb0, 0xeb, // mov $0xeb,%al
+		0xb9, 0x2f, 0x00, 0x00, 0x00, // mov $0x2f,%ecx
+		0xa0, 0x60, 0x96, 0x2c, 0xc0, // mov 0xc02c9660,%al
+		0xa1, 0x9c, 0xf6, 0x2b, 0xc0, // mov 0xc02bf69c,%eax
+		0xa3, 0x24, 0x01, 0x31, 0xc0, // mov %eax,0xc0310124
+		0x89, 0xd8, // mov %ebx,%eax
+		0x8a, 0x45, 0xec, // mov -0x14(%ebp),%al
+		0x8c, 0xd0, // mov %ss,%eax
+		0x8e, 0xd8, // mov %eax,%ds
+		0x8e, 0xd9, // mov %ecx,%ds
+	})
+	dc := NewDisContext(binary)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov $0xeb,%al", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov $0x2f,%ecx", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov 0xc02c9660,%al", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov 0xc02bf69c,%eax", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov %eax,0xc0310124", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov %ebx,%eax", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov -0x14(%ebp),%al", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov %ss,%eax", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov %eax,%ds", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov %ecx,%ds", t)
 }

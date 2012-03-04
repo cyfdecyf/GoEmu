@@ -59,17 +59,17 @@ func (dc *DisContext) parsePrefix() {
 		dc.Prefix |= pref
 		switch pref {
 		case PrefixOperandSize:
-			// Reverse the size
+			// Address overriding: reverse the size
 			if dc.OperandSize == OpSizeLong {
-				dc.OperandSize = OpSizeWord
+				dc.setInsnOperandSize(OpSizeWord)
 			} else {
-				dc.OperandSize = OpSizeLong
+				dc.setInsnOperandSize(OpSizeLong)
 			}
 		case PrefixAddressSize:
 			if dc.AddressSize == OpSizeLong {
-				dc.AddressSize = OpSizeWord
+				dc.setInsnAddressSize(OpSizeWord)
 			} else {
-				dc.AddressSize = OpSizeLong
+				dc.setInsnAddressSize(OpSizeLong)
 			}
 		}
 	} else {
