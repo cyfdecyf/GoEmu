@@ -70,7 +70,16 @@ func (dc *DisContext) parseOpcode() {
 
 	// mov reg
 	case 0x88, 0x89, 0x8a, 0x8b:
-		dc.parseMovModRM(op)
+		dc.parseModRM()
+		dc.set2OperandModRM(OpMov, op&0x01, op&0x02)
+	// mov reg/mem to segreg
+	case 0x8c:
+		dc.parseModRM()
+		dc.set2Operand(OpMov, OperandSegReg, OperandRm)
+	// mov segreg to reg/mem
+	case 0x8e:
+		dc.parseModRM()
+		dc.set2Operand(OpMov, OperandRm, OperandSegReg)
 	// mov eax
 	case 0xa0, 0xa1, 0xa2, 0xa3:
 		dc.parseMovEax(op)
@@ -117,9 +126,4 @@ func (dc *DisContext) parseMovEax(op byte) {
 	} else {
 		dc.set2Operand(OpMov, OperandRegByte-wField, OperandMOffByte-wField)
 	}
-}
-
-func (dc *DisContext) parseMovModRM(op byte) {
-	dc.parseModRM()
-	dc.set2OperandModRM(OpMov, op&0x01, op&0x02)
 }

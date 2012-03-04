@@ -146,6 +146,9 @@ func TestMov(t *testing.T) {
 		0xa3, 0x24, 0x01, 0x31, 0xc0, // mov %eax,0xc0310124
 		0x89, 0xd8, // mov %ebx,%eax
 		0x8a, 0x45, 0xec, // mov -0x14(%ebp),%al
+		0x8c, 0xd0, // mov %ss,%eax
+		0x8e, 0xd8, // mov %eax,%ds
+		0x8e, 0xd9, // mov %ecx,%ds
 	})
 	dc := NewDisContext(binary)
 
@@ -169,4 +172,13 @@ func TestMov(t *testing.T) {
 
 	dc.NextInsn()
 	checkDump(dc.DumpInsn(), "mov -0x14(%ebp),%al", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov %ss,%eax", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov %eax,%ds", t)
+
+	dc.NextInsn()
+	checkDump(dc.DumpInsn(), "mov %ecx,%ds", t)
 }
