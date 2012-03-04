@@ -77,28 +77,28 @@ func (dc *DisContext) parseOpcode() {
 	case 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, // mov (immediate byte into byte register)
 		0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xdd, 0xbe, 0xbf: // mov (immediate word or long into byte register)
 		dc.Reg = op & 0x07
-		byteBit := op & 0x0f >> 3
-		dc.getImmediate(OperandImmByte - byteBit)
-		dc.set2Operand(OpMov, OperandImmByte-byteBit, OperandRegByte-byteBit)
+		wField := op & 0x0f >> 3
+		dc.getImmediate(OperandImmByte - wField)
+		dc.set2Operand(OpMov, OperandImmByte-wField, OperandRegByte-wField)
 	}
 }
 
 func (dc *DisContext) parseArith(op byte) {
 	opcode := int(OpAdd + op&0x28)
 
-	byteBit := op & 0x1
+	wField := op & 0x1
 	switch op & 0xf {
 	case 0, 1, 2, 3:
 		dc.parseModRM()
 		if op&0x2 == 0 { // bit 2 indicates the direction
-			dc.set2Operand(opcode, OperandRegByte-byteBit, OperandRm)
+			dc.set2Operand(opcode, OperandRegByte-wField, OperandRm)
 		} else {
-			dc.set2Operand(opcode, OperandRm, OperandRegByte-byteBit)
+			dc.set2Operand(opcode, OperandRm, OperandRegByte-wField)
 		}
 	case 4, 5:
 		dc.Reg = Eax
-		dc.getImmediate(OperandImmByte - byteBit)
-		dc.set2Operand(opcode, OperandImmByte-byteBit, OperandRegByte-byteBit)
+		dc.getImmediate(OperandImmByte - wField)
+		dc.set2Operand(opcode, OperandImmByte-wField, OperandRegByte-wField)
 	default:
 		log.Panicln("parseArith: byte 0x%x: error", op)
 	}
