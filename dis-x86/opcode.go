@@ -5,17 +5,17 @@ import (
 )
 
 const (
-	// Arith
+	// Keep the order of the instructions. Opcode parsing relies on the order.
 	OpAdd = iota
-	OpAdc
-	OpAnd
-	OpXor
 	OpOr
+	OpAdc
 	OpSbb
+	OpAnd
 	OpSub
+	OpXor
 	OpCmp
 
-	OpInc // Keep the order of the 4 instructions
+	OpInc
 	OpDec
 	OpPush
 	OpPop
@@ -39,7 +39,8 @@ func (dc *DisContext) parseOpcode() {
 	/* Arithmetic and logic instructions */
 
 	// arith
-	case 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, // add
+	case
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, // add
 		0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, // or
 		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, // adc
 		0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, // sbb
@@ -50,7 +51,8 @@ func (dc *DisContext) parseOpcode() {
 		dc.parseArith(op)
 
 	// inc, dec, push, pop
-	case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, // inc
+	case
+		0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, // inc
 		0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f, // dec
 		0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, // push
 		0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f: // pop
@@ -81,34 +83,14 @@ func (dc *DisContext) parseOpcode() {
 	}
 }
 
-var arithOpcode1 = [...]int{
-	0: OpAdd,
-	1: OpAdc,
-	2: OpAnd,
-	3: OpXor,
-}
-
-var arithOpcode2 = [...]int{
-	0: OpOr,
-	1: OpSbb,
-	2: OpSub,
-	3: OpCmp,
-}
-
 func (dc *DisContext) parseArith(op byte) {
-	h, l := op>>4, op&0x0f
-	var opcode int
-	if l < 8 {
-		opcode = arithOpcode1[h]
-	} else {
-		opcode = arithOpcode2[h]
-	}
+	opcode := int(OpAdd + op&0x28)
 
-	byteBit := l & 0x1
-	switch l {
+	byteBit := op & 0x1
+	switch op & 0xf {
 	case 0, 1, 2, 3:
 		dc.parseModRM()
-		if l&0x2 == 0 { // bit 2 indicates the direction
+		if op&0x2 == 0 { // bit 2 indicates the direction
 			dc.set2Operand(opcode, OperandRegByte-byteBit, OperandRm)
 		} else {
 			dc.set2Operand(opcode, OperandRm, OperandRegByte-byteBit)
