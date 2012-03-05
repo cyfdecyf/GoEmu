@@ -118,7 +118,6 @@ type Instruction struct {
 	// Displacement size is associated with ModR/M and SIB byte, can't easily
 	// encode the size information in operand type. So store it here.
 	DispSize byte
-	hasSIB   bool
 }
 
 func (insn *Instruction) set1Operand(op int, src byte) {
@@ -250,7 +249,7 @@ func (dc *DisContext) NextInsn() *DisContext {
 		}
 	}()
 	dc.DispSize = 0
-	dc.hasSIB = false
+	dc.Scale = 0
 	dc.Prefix = 0
 	dc.sizeOverride = 0
 
@@ -366,7 +365,7 @@ func (dc *DisContext) parseAfterModRM16bit() {
 func (dc *DisContext) parseSIB() {
 	// SIB has the same bit field allocation with ModR/M byte
 	dc.Scale, dc.Index, dc.Base = parseBitField(dc.nextByte())
-	dc.hasSIB = true
+	dc.Scale = 1 << dc.Scale
 
 	if dc.Base == 5 {
 		switch dc.Mod {

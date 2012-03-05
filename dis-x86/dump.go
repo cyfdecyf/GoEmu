@@ -108,7 +108,7 @@ func (dc *DisContext) dumpRm32bit() (dump string) {
 	if dc.DispSize != 0 {
 		dump = dc.dumpDisp()
 	}
-	if dc.hasSIB {
+	if dc.Scale != 0 {
 		dump += dc.dumpSIB()
 	} else if !(dc.Rm == 5 && dc.Mod == 0) {
 		dump += fmt.Sprintf("(%s)", dc.formatReg(dc.Rm))
@@ -128,7 +128,7 @@ func (dc *DisContext) dumpSIB() string {
 		// XXX What does none mean for scale index? Only use the base register
 		// in SIB?
 		index = dc.formatReg(dc.Index)
-		scale = fmt.Sprintf("%d", 1<<dc.Scale)
+		scale = fmt.Sprintf("%d", dc.Scale)
 	}
 	return fmt.Sprintf("(%s,%s,%s)", base, index, scale)
 }
