@@ -1,5 +1,5 @@
-Documents
-=========
+Documents to understand x86 instructions
+========================================
 
 The 7 volumes Intel Manual. I'm using the version released in Dec. 2011.
 For simplicity, I will call them Vol1, Vol2A, Vol2B etc.
@@ -9,10 +9,37 @@ Other online resources maybe easy to get started.
 - [X86-64 Instruction Encoding](http://wiki.osdev.org/X86-64_Instruction_Encoding)
 - [x86-64 Tour of Intel Manuals](http://x86asm.net/articles/x86-64-tour-of-intel-manuals/)
 
+diStorm
+-------
+
+[diStorm Powerful Disassembler Library For x86/AMD64](http://code.google.com/p/distorm/)
+
+This is a great disassembler library. **Good documentation, clean and readable
+code**.
+
+It encodes all the instructions and their information in a Python source file.
+And we can use that to generate instruction table for our language of choice.
+
+But wait, why not I just use diStorm directly? Well, for more understanding of
+x86 instructions, and for fun ;) Quote from diStorm's google code page:
+
+> Gil Dabah started this project from scratch in June 2003 for his own fun in
+> his free time.
+
 Operand size and address-size attribute
 =======================================
 
 Refer to Vol1 3.6. This note only talks about 32-bit case.
+
+Instructions may have source and destination operands. Operands include:
+
+- immediate operand (only in source operand)
+- register
+- memory location
+- I/O port
+
+When referring to an operand, we need to know its size. For memory operand, we
+need to know the address-size so we know how many bytes is in the offset.
 
 > In protected mode, every code segment has a default operand-size attribute and
 > address-size attribute.
@@ -28,13 +55,6 @@ These attributes are selected by the D flag in segment descriptor.
 
 - In Real-address, virtual-8086 or SMM mode, both attributes are always 16-bits.
 
-Source and destination operands include:
-
-- immediate operand (only in source operand)
-- register
-- memory location
-- I/O port
-
 The address-size attribute selects the sizes of addresses used to address memory.
 It affects segment offset and displacement.
 
@@ -46,29 +66,27 @@ address-size  | segment offset | displacement
 Prefix
 ======
 
-- **Operand-size override prefix** can override the operand and address size for
-  a particular instruction.
+**Operand-size override prefix** can override the operand and address size for
+a particular instruction.
 
-  > The operand-size override prefix allows a program to switch between 16- and
-  > 32-bit operand sizes. Either size can be the default; use of the prefix
-  > selects the non-default size.
+> The operand-size override prefix allows a program to switch between 16- and
+> 32-bit operand sizes. Either size can be the default; use of the prefix
+> selects the non-default size.
 
 Opcode
 ======
 
-Refer Vol2A Section 3.1.1 for how to interpret the instruction
-reference.
+Refer Vol2A Section 3.1.1 for how to interpret the instruction reference.
 
 Instruction formats and encoding
 --------------------------------
 
-Vol2C Appendix B Section B.2 Table B-13 lists all the instruction encoding
-with all the special fields. We can use this table to generate all the
-possible instruction encodings. (Maybe diStorm's trie is built using this
-table.)
+Vol2C Appendix B Section B.2 Table B-13 lists all the instruction encoding with
+all the special fields. We can use this table to generate all the possible
+instruction encodings. (Maybe diStorm's trie is built using this table.)
 
-The "A", "B" superscripts for the "mod" in Table B-13 means specific encoding
-of the mod field in ModR/M byte is reserved. Refer to B.1.5 Table B-12.
+The "A", "B" superscripts for the "mod" in Table B-13 means specific encoding of
+the mod field in ModR/M byte is reserved. Refer to B.1.5 Table B-12.
 
 Opcode map
 ----------
@@ -96,7 +114,8 @@ From A.2.1 Codes for Addressing Method
   - `E` -- operand is either a general-purpose register or a memory address
   - `R` -- R/M field refer only to a general register
   - `M` -- ModR/M byte may refer only to memory
-  - `I` -- Immediate data: the operand value is encoded in subsequent bytes of the instruction
+  - `I` -- Immediate data: the operand value is encoded in subsequent bytes of
+    the instruction
 
 From A.2.2 Codes for Operand Type
 
@@ -116,4 +135,5 @@ opcode actually do. The superscript symbol "1A" means (refer to Table A-1):
 
 > Bits 5, 4, and 3 of ModR/M byte used as an opcode extension
 
-So what the opcode does depends on the extension in the reg field of ModR/M byte.
+So what the opcode does depends on the extension in the reg field of ModR/M
+byte.
