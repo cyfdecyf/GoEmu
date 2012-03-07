@@ -19,15 +19,28 @@ class InstructionDB():
 		self.insn_opid = 0
 		# Hold opcode information, (opcode, opcodeid, flags, [4 operand])
 		self.insn_info = []
+		self.opid_name = None
+
+	def init_opid_name(self):
+		if self.opid_name == None:
+			self.opid_name = [ (opid, name) for (name, opid) in self.name_opid.iteritems() ]
+		self.opid_name.sort()
 
 	def dump_insn_name(self):
-		insn_arr = [ (opid, name) for (name, opid) in self.name_opid.iteritems() ]
-		insn_arr.sort()
-		insn_list = [ '\t%#04x: "%s",\n' % (opid, name.lower()) for (opid, name) in insn_arr ]
+		self.init_opid_name()
+		insn_list = [ '\t%#04x: "%s",\n' % (opid, name.lower()) for (opid, name) in self.opid_name ]
 		dump = """var InsnName = [...]string{
 %s}
 """ % ''.join(insn_list)
 		return dump
+
+	def dump_opcodeid(self):
+		self.init_opid_name()
+		l = [ "\tInsn_%s\n" % (name.capitalize().replace(' ', '_'),)  for _, name in self.opid_name[1:] ]
+		return """const (
+	Insn_%s byte = iota
+%s)
+""" % (self.opid_name[0][1].capitalize().replace(' ', '_'), ''.join(l))
 
 	# copied from x86header.py
 	INSN_FLAGS =  """const (
@@ -220,6 +233,7 @@ class InstructionDB():
 		print self.PKG
 		print self.INSN_FLAGS
 		print self.OPERAND_TYPE
+		print self.dump_opcodeid()
 		print self.dump_insn_name()
 
 def main():
