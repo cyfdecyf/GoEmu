@@ -2,18 +2,26 @@ import x86sets
 from x86header import *
 
 """
-Generate instruction definition for GoEmu
+Generate instruction definition for GoEmu.
+
+Much code is copied from x86db.py
 """
+
+class DBException(Exception):
+	""" Used in order to throw an exception when an error occurrs in the DB. """
+	pass
 
 class InstructionDB():
 	def __init__(self):
 		# Holds all the instructions, { "name" : opcodeId }
-		self.all_insn = {}
-		# Current largest instruction id
+		self.name_opid = {}
+		# Current largest instruction id. Opcode id is only used in Go code.
 		self.insn_opid = 0
+		# Hold opcode information, (opcode, opcodeid, flags, [4 operand])
+		self.insn_info = []
 
-	def dump_insn(self):
-		insn_arr = [ (opid, name) for (name, opid) in self.all_insn.iteritems() ]
+	def dump_insn_name(self):
+		insn_arr = [ (opid, name) for (name, opid) in self.name_opid.iteritems() ]
 		insn_arr.sort()
 		insn_list = [ '\t%#04x: "%s",\n' % (opid, name.lower()) for (opid, name) in insn_arr ]
 		dump = """var InsnName = [...]string{
@@ -24,7 +32,7 @@ class InstructionDB():
 	# copied from x86header.py
 	INSN_FLAGS =  """const (
 	IFLAG_NONE = iota
-	IFLAG_MODRM_REQUIRED
+	IFLAG_MODRM_REQUIRED = 1 << iota
 	IFLAG_NOT_DIVIDED
 	IFLAG_16BITS
 	IFLAG_32BITS
@@ -66,18 +74,153 @@ class InstructionDB():
 )
 """
 
-	# (iset-class, opcode-length, list of bytes of opcode, list of string of mnemonics, list of operands, flags) """
 	def SetInstruction(self, *args):
-		# ignore insn_class, and I use only the first mnemonics in all possible ones
+		""" This function is used in order to insert an instruction info into the DB. """
+		# *args = ISetClass, OL, pos, mnemonics, operands, flags
+		# Construct an Instruction Info object with the info given in args.
+		opcode = args[1].replace(" ", "").split(",")
+		# The number of bytes is the base length, now we need to check the last entry.
+		pos = [int(i[:2], 16) for i in opcode]
+		last = opcode[-1][2:] # Skip hex of last full byte
+		isModRMIncluded = False # Indicates whether 3 bits of the REG field in the ModRM byte were used.
+		if last[:2] == "//": # Divided Instruction
+			pos.append(int(last[2:], 16))
+			isModRMIncluded = True
+			try:
+				OL = {1:OpcodeLength.OL_1d, 2:OpcodeLength.OL_2d}[len(opcode)]
+			except KeyError:
+				raise DBException("Invalid divided instruction opcode")
+		elif last[:1] == "/": # Group Instruction
+			isModRMIncluded = True
+			pos.append(int(last[1:], 16))
+			try:
+				OL = {1:OpcodeLength.OL_13, 2:OpcodeLength.OL_23, 3:OpcodeLength.OL_33}[len(opcode)]
+			except KeyError:
+				raise DBException("Invalid group instruction opcode")
+		elif len(last) != 0:
+			raise DBException("Invalid last byte in opcode")
+			# Normal full bytes instruction
+		else:
+			try:
+				OL = {1:OpcodeLength.OL_1, 2:OpcodeLength.OL_2, 3:OpcodeLength.OL_3, 4:OpcodeLength.OL_4}[len(opcode)]
+			except KeyError:
+				raise DBException("Invalid normal instruction opcode")
+
 		mnemonics = args[2][0].lower()
-		if mnemonics not in self.all_insn:
-			self.all_insn[mnemonics] = self.insn_opid
+		operands = args[3]
+		flags = args[4]
+		if mnemonics not in self.name_opid:
+			self.name_opid[mnemonics] = self.insn_opid
 			self.insn_opid += 1
-		pass
+		opcodeid = self.name_opid[mnemonics]
+		insninfo = (pos, OL, opcodeid, flags, operands)
+		# print insninfo
+		self.insn_info.append(insninfo)
+
+	OPERAND_TYPE = """const (
+	OT_NONE byte = iota
+	OT_IMM8
+	OT_IMM16
+	OT_IMM_FULL
+	OT_IMM32
+	OT_SEIMM8
+	OT_IMM16_1
+	OT_IMM8_1
+	OT_IMM8_2
+	OT_REG8
+	OT_REG16
+	OT_REG_FULL
+	OT_REG32
+	OT_REG32_64
+	OT_FREG32_64_RM
+	OT_RM8
+	OT_RM16
+	OT_RM_FULL
+	OT_RM32_64
+	OT_RM16_32
+	OT_FPUM16
+	OT_FPUM32
+	OT_FPUM64
+	OT_FPUM80
+	OT_R32_M8
+	OT_R32_M16
+	OT_R32_64_M8
+	OT_R32_64_M16
+	OT_RFULL_M16
+	OT_CREG
+	OT_DREG
+	OT_SREG
+	OT_SEG
+	OT_ACC8
+	OT_ACC16
+	OT_ACC_FULL
+	OT_ACC_FULL_NOT64
+	OT_MEM16_FULL
+	OT_PTR16_FULL
+	OT_MEM16_3264
+	OT_RELCB
+	OT_RELC_FULL
+	OT_MEM
+	OT_MEM_OPT
+	OT_MEM32
+	OT_MEM32_64
+	OT_MEM64
+	OT_MEM128
+	OT_MEM64_128
+	OT_MOFFS8
+	OT_MOFFS_FULL
+	OT_CONST1
+	OT_REGCL
+	OT_IB_RB
+	OT_IB_R_FULL
+	OT_REGI_ESI
+	OT_REGI_EDI
+	OT_REGI_EBXAL
+	OT_REGI_EAX
+	OT_REGDX
+	OT_REGECX
+	OT_FPU_SI
+	OT_FPU_SSI
+	OT_FPU_SIS
+	OT_MM
+	OT_MM_RM
+	OT_MM32
+	OT_MM64
+	OT_XMM
+	OT_XMM_RM
+	OT_XMM16
+	OT_XMM32
+	OT_XMM64
+	OT_XMM128
+	OT_REGXMM0
+	OT_RM32
+	OT_REG32_64_M8
+	OT_REG32_64_M16
+	OT_WREG32_64
+	OT_WRM32_64
+	OT_WXMM32_64
+	OT_VXMM
+	OT_XMM_IMM
+	OT_YXMM
+	OT_YXMM_IMM
+	OT_YMM
+	OT_YMM256
+	OT_VYMM
+	OT_VYXMM
+	OT_YXMM64_256
+	OT_YXMM128_256
+	OT_LXMM64_128
+	OT_LMEM128_256
+)
+"""
+
+	PKG = 'package dis\n'
 
 	def dump(self):
+		print self.PKG
 		print self.INSN_FLAGS
-		print self.dump_insn()
+		print self.OPERAND_TYPE
+		print self.dump_insn_name()
 
 def main():
 	db = InstructionDB()

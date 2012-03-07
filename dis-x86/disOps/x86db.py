@@ -145,7 +145,7 @@ class GenBlock:
 	Following the last example, all instructions in the range of 0x40-0x47 point to the instruction-info 0x40, which means INC <REG-FROM-SAME-BYTE>.
 	This means that we don't call SetInstruction for the range 0x40-0x47, only a single set instruction per this block
 	(8 instructions which their REG field is extracted from their own byte code).
-	So in order to simulate the real case where there are actually 8 instructions that were set using SetInstruction,
+	So in order to simulate the real case where there are actually 8 instructions that were set usingSetInstruction,
 	this class handles this special flag and returns the same first instruction for its corresponding block at runtime. """
 
 	# Number of generated instructions in a row.
