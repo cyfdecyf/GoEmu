@@ -1,19 +1,19 @@
 package dis
 
 import (
+	"io"
 	"testing"
-	"os"
 )
 
 type SliceReader []byte
 
-func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err os.Error) {
+func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err error) {
 	var i int
 	for i = 0; i < len(p) && i < (len(buf)-int(off)); i++ {
 		p[i] = buf[int(off)+i]
 	}
 	if i < len(p) {
-		return i, os.EOF
+		return i, io.EOF
 	}
 	return i, nil
 }
@@ -21,7 +21,7 @@ func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err os.Error) {
 func checkDump(dc *DisContext, expected string, t *testing.T) {
 	if dc == nil {
 		if expected != "" {
-			t.Errorf("EOF not handled correctly\n") 
+			t.Errorf("EOF not handled correctly\n")
 		}
 		return
 	}

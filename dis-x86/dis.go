@@ -1,10 +1,10 @@
 package dis
 
 import (
-	"io"
-	"os"
-	"log"
 	"encoding/binary"
+	"io"
+	"log"
+	"os"
 )
 
 /*
@@ -242,7 +242,7 @@ func (dc *DisContext) NextInsn() *DisContext {
 	// Error handling
 	defer func() {
 		if err := recover(); err != nil {
-			if err != os.EOF {
+			if err != io.EOF {
 				log.Println("work failed:", err)
 			}
 			return
