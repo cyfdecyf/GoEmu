@@ -51,7 +51,7 @@ var InsnName = [...]string{
 	# copied from x86header.py
 	INSN_FLAGS =  """const (
 	IFLAG_NONE = iota
-	IFLAG_MODRM_REQUIRED = 1 << iota
+	IFLAG_MODRM_REQUIRED = 1 << iota - 1
 	IFLAG_NOT_DIVIDED
 	IFLAG_16BITS
 	IFLAG_32BITS
@@ -117,9 +117,10 @@ var InsnName = [...]string{
 		# Use the lowest opcode id if mnemonics is modrm based
 		opcodeid = self.name_opid[mnemonics[0]]
 
-		# Note grp 7 instruction would be difficult to handle. We can't just
-		# add the reg field to the opcode id to get the correct id.
-		# If this instruction has the same encoding with the previous one.
+		# If this instruction has the same encoding with the previous one, we
+		# can just ignore this one because this is a group instruction. Note
+		# grp 7 instruction would be difficult to handle. We can't just add
+		# the reg field to the opcode id to get the correct id.
 		if len(self.insn_info) > 0 and self.insn_info[-1][0] == pos:
 			return
 
@@ -154,6 +155,17 @@ var InsnName = [...]string{
 		insninfo = (pos, OL, opcodeid, flags, operands)
 		# print insninfo
 		self.insn_info.append(insninfo)
+
+		# Generate all opcode for instructions which use the lowest 3 bits are reg field
+		# Ugly code here ...
+		for op in operands:
+			if (op == OperandType.IB_RB) or (op == OperandType.IB_R_FULL):
+				for i in xrange(1, 8):
+					if len(opcode) == 1:
+						self.insn_info.append(([pos[0] + i] + pos[1:], OL, opcodeid, flags, operands))
+					elif len(opcode) == 2:
+						self.insn_info.append(([pos[0], pos[1] + i] + pos[2:], OL, opcodeid, flags, operands))
+				break
 
 	OPERAND_TYPE = """const (
 	OT_NONE byte = iota

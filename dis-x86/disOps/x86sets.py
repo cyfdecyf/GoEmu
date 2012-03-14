@@ -293,13 +293,6 @@ class Instructions:
 
 		# V 1.7.24 - New instruction multi-byte NOP.
 		Set("0f, 1f", ["NOP"], [OPT.RM_FULL], IFlag.MODRM_REQUIRED)
-		Set("91", ["XCHG"], [OPT.IB_R_FULL, OPT.ACC_FULL], IFlag.INST_FLAGS_NONE)
-		Set("92", ["XCHG"], [OPT.IB_R_FULL, OPT.ACC_FULL], IFlag.INST_FLAGS_NONE)
-		Set("93", ["XCHG"], [OPT.IB_R_FULL, OPT.ACC_FULL], IFlag.INST_FLAGS_NONE)
-		Set("94", ["XCHG"], [OPT.IB_R_FULL, OPT.ACC_FULL], IFlag.INST_FLAGS_NONE)
-		Set("95", ["XCHG"], [OPT.IB_R_FULL, OPT.ACC_FULL], IFlag.INST_FLAGS_NONE)
-		Set("96", ["XCHG"], [OPT.IB_R_FULL, OPT.ACC_FULL], IFlag.INST_FLAGS_NONE)
-		Set("97", ["XCHG"], [OPT.IB_R_FULL, OPT.ACC_FULL], IFlag.INST_FLAGS_NONE)
 		Set("98", ["CBW", "CWDE", "CDQE"], [], IFlag.USE_EXMNEMONIC | IFlag.USE_EXMNEMONIC2)
 		Set("99", ["CWD", "CDQ", "CQO"], [], IFlag.USE_EXMNEMONIC | IFlag.USE_EXMNEMONIC2)
 		Set("9a", ["CALL FAR"], [OPT.PTR16_FULL], IFlag.INVALID_64BITS)
