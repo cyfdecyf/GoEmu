@@ -266,34 +266,44 @@ func (dc *DisContext) NextInsn() *DisContext {
 
 /* Reading binary */
 
-func (dc *DisContext) getBytes(buf []byte) {
-	n, err := dc.binary.ReadAt(buf, dc.offset)
+var readBuf = [...][]byte{
+	nil,
+	make([]byte, 1),
+	make([]byte, 2),
+	make([]byte, 4),
+}
+
+// Size can only be OpSizeByte/Word/Long
+func (dc *DisContext) readNBytes(size byte) (val int32) {
+	n, err := dc.binary.ReadAt(readBuf[size], dc.offset)
 	if err != nil {
 		panic(err)
 	}
-	dc.offset += int64(n)
-}
 
-var (
-	bufbyte = make([]byte, 1)
-	bufword = make([]byte, 2)
-	buflong = make([]byte, 4)
-)
+	switch size {
+	case OpSizeByte:
+		val = int32(readBuf[size][0])
+	case OpSizeWord:
+		val = int32(binary.LittleEndian.Uint16(readBuf[size]))
+	case OpSizeLong:
+		val = int32(binary.LittleEndian.Uint32(readBuf[size]))
+	}
+
+	dc.offset += int64(n)
+	return
+}
 
 // Get the next byte in the instruction stream
 func (dc *DisContext) nextByte() byte {
-	dc.getBytes(bufbyte)
-	return bufbyte[0]
+	return byte(dc.readNBytes(OpSizeByte))
 }
 
-func (dc *DisContext) nextWord() uint16 {
-	dc.getBytes(bufword)
-	return binary.LittleEndian.Uint16(bufword)
+func (dc *DisContext) nextWord() int16 {
+	return int16(dc.readNBytes(OpSizeWord))
 }
 
-func (dc *DisContext) nextLong() uint32 {
-	dc.getBytes(buflong)
-	return binary.LittleEndian.Uint32(buflong)
+func (dc *DisContext) nextLong() int32 {
+	return dc.readNBytes(OpSizeLong)
 }
 
 // Put back the previously read byte
@@ -385,16 +395,10 @@ func (dc *DisContext) parseSIB() {
 
 /* Immediate value */
 
-// Only use this function for immediate value larger than a byte
 func (dc *DisContext) getImmediate(ot byte) {
 	switch ot {
 	case OperandImm:
-		switch dc.EffectiveOperandSize() {
-		case OpSizeWord:
-			dc.ImmOff = int32(dc.nextWord())
-		case OpSizeLong:
-			dc.ImmOff = int32(dc.nextLong())
-		}
+		dc.ImmOff = dc.readNBytes(dc.EffectiveOperandSize())
 	case OperandImmByte:
 		dc.ImmOff = int32(dc.nextByte())
 	default:
@@ -403,26 +407,11 @@ func (dc *DisContext) getImmediate(ot byte) {
 }
 
 func (dc *DisContext) getDisp(size byte) {
-	switch size {
-	case OpSizeByte:
-		dc.Disp = int32(dc.nextByte())
-		dc.DispSize = OpSizeLong
-	case OpSizeWord:
-		dc.Disp = int32(dc.nextWord())
-		dc.DispSize = OpSizeWord
-	case OpSizeLong:
-		dc.Disp = int32(dc.nextLong())
-		dc.DispSize = OpSizeLong
-	}
-	return
+	dc.DispSize = size
+	dc.Disp = int32(dc.readNBytes(size))
 }
 
 // Get memory offset
 func (dc *DisContext) getMOffset() {
-	switch dc.EffectiveAddressSize() {
-	case OpSizeWord:
-		dc.ImmOff = int32(dc.nextWord())
-	case OpSizeLong:
-		dc.ImmOff = int32(dc.nextLong())
-	}
+	dc.ImmOff = int32(dc.readNBytes(dc.EffectiveAddressSize()))
 }
