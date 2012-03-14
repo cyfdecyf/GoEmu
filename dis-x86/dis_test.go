@@ -32,7 +32,7 @@ func checkDump(dc *DisContext, expected string, t *testing.T) {
 }
 
 func TestPrefixParse(t *testing.T) {
-	binary := SliceReader([]byte{0xf0, 0x88, 0x67})
+	binary := SliceReader([]byte{0xf0, 0x88, 0x67, 0x89}) // Add one more byte to avoid EOF
 	dc := NewDisContext(binary)
 
 	dc.parsePrefix()
@@ -48,8 +48,15 @@ func TestPrefixParse(t *testing.T) {
 		t.Error("Offset should not advance on non Prefix")
 	}
 
-	dc.offset++
+	// Skip the non prefix byte
+	if dc.nextByte() != 0x88 {
+		t.Error("Byte not correct after parsing non prefix.")
+	}
+
 	dc.parsePrefix()
+	if dc.offset != 3 {
+		t.Error("Offset not correct when parsing prefix")
+	}
 	if dc.Prefix&PrefixAddressSize != PrefixAddressSize {
 		t.Error("Prefix address size not detected")
 	}

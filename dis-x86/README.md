@@ -8,6 +8,8 @@ Other online resources maybe easy to get started.
 
 - [X86-64 Instruction Encoding](http://wiki.osdev.org/X86-64_Instruction_Encoding)
 - [x86-64 Tour of Intel Manuals](http://x86asm.net/articles/x86-64-tour-of-intel-manuals/)
+- [diStorm's introduction to x86 x64 machine instruction](http://code.google.com/p/distorm/wiki/x86_x64_Machine_Code)
+  - Detailed information, contains rational why the instruction is encoded this way.
 
 diStorm
 -------
@@ -15,7 +17,7 @@ diStorm
 [diStorm Powerful Disassembler Library For x86/AMD64](http://code.google.com/p/distorm/)
 
 This is a great disassembler library. **Good documentation, clean and readable
-code**.
+code**. (Here's the doc about [its internals](http://code.google.com/p/distorm/wiki/diStorm_Internals).)
 
 It encodes all the instructions and their information in a Python source file.
 And we can use that to generate instruction table for our language of choice.
@@ -26,7 +28,7 @@ x86 instructions, and for fun ;) Quote from diStorm's google code page:
 > Gil Dabah started this project from scratch in June 2003 for his own fun in
 > his free time.
 
-Operand size and address-size attribute
+Operand-size and address-size attribute
 =======================================
 
 Refer to Vol1 3.6. This note only talks about 32-bit case.

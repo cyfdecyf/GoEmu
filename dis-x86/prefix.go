@@ -53,9 +53,10 @@ var Prefix = map[byte]int{
 }
 
 // Read only one byte, store information in the Prefix field
-func (dc *DisContext) parsePrefix() {
+func (dc *DisContext) __parsePrefix() (got bool) {
 	pref, ok := Prefix[dc.nextByte()]
 	if ok {
+		got = true
 		dc.Prefix |= pref
 		switch pref {
 		case PrefixOperandSize:
@@ -74,5 +75,12 @@ func (dc *DisContext) parsePrefix() {
 		}
 	} else {
 		dc.putByte()
+	}
+	return
+}
+
+func (dc *DisContext) parsePrefix() {
+	// Keep parsing prefix until no one is find.
+	for dc.__parsePrefix() {
 	}
 }
