@@ -82,6 +82,12 @@ const (
 	OperandSegReg = 10 // Segment register
 )
 
+type InsnInfo struct {
+	Opcode  byte
+	Flag    uint64
+	Operand [4]byte
+}
+
 type Instruction struct {
 	Prefix int
 	Opcode int

@@ -119,15 +119,15 @@ class Instructions:
 		Set("0f, ae /01", ["FXRSTOR", "", "FXRSTOR64"], [OPT.MEM], IFlag.MODRM_REQUIRED | IFlag._32BITS | IFlag._64BITS | IFlag.PRE_REX | IFlag.USE_EXMNEMONIC2)
 		Set("0f, ae /02", ["LDMXCSR"], [OPT.MEM], IFlag.MODRM_REQUIRED | IFlag._32BITS)
 		Set("0f, ae /03", ["STMXCSR"], [OPT.MEM], IFlag.MODRM_REQUIRED | IFlag._32BITS)
-
+		# XSAVE is new instruction from Intel 2008
+		Set("0f, ae /04", ["XSAVE", "", "XSAVE64"], [OPT.MEM], IFlag.MODRM_REQUIRED | IFlag._32BITS | IFlag._64BITS | IFlag.PRE_REX | IFlag.USE_EXMNEMONIC2)
 		# MFENCE and XSAVEOPT share the same opcode 0f ae /6. It's MFENCE when MOD=11, else XSAVEOPT or XSAVEOPT64 in 64.
+		# Same for LFENCE and XRSTOR with 0f ae /5.
+		Set("0f, ae /05", ["LFENCE", "XRSTOR", "XRSTOR64"], [OPT.MEM_OPT], IFlag.MODRM_REQUIRED | IFlag._32BITS | IFlag.USE_EXMNEMONIC | IFlag.MNEMONIC_MODRM_BASED | IFlag._64BITS | IFlag.PRE_REX | IFlag.USE_EXMNEMONIC2)
 		Set("0f, ae /06", ["MFENCE", "XSAVEOPT", "XSAVEOPT64"], [OPT.MEM_OPT], IFlag.MODRM_REQUIRED | IFlag._32BITS | IFlag.USE_EXMNEMONIC | IFlag.MNEMONIC_MODRM_BASED | IFlag._64BITS | IFlag.PRE_REX | IFlag.USE_EXMNEMONIC2)
-
 		# SFENCE and CLFLUSH share the same opcode 0f ae /7. It's SFENCE when MOD=11, else CLFLUSH.
 		# But the operand is used only for CLFLUSH, which means it's optional. MOD=11 for first mnemonic.
 		Set("0f, ae /07", ["SFENCE", "CLFLUSH"], [OPT.MEM_OPT], IFlag.MODRM_REQUIRED | IFlag._32BITS | IFlag.USE_EXMNEMONIC | IFlag.MNEMONIC_MODRM_BASED)
-		# Same for LFENCE and XRSTOR with 0f ae /5.
-		Set("0f, ae /05", ["LFENCE", "XRSTOR", "XRSTOR64"], [OPT.MEM_OPT], IFlag.MODRM_REQUIRED | IFlag._32BITS | IFlag.USE_EXMNEMONIC | IFlag.MNEMONIC_MODRM_BASED | IFlag._64BITS | IFlag.PRE_REX | IFlag.USE_EXMNEMONIC2)
 
 		Set("0f, af", ["IMUL"], [OPT.REG_FULL, OPT.RM_FULL], IFlag.MODRM_REQUIRED | IFlag._32BITS)
 		Set("0f, b0", ["CMPXCHG"], [OPT.RM8, OPT.REG8], IFlag.MODRM_REQUIRED | IFlag._32BITS | IFlag.PRE_LOCK)
@@ -465,15 +465,15 @@ class Instructions:
 
 		# New instructions from AMD July 2007 (POPCNT is already defined in SSE4.2, MONITOR, MWAIT are already defined above):
 		# Note LZCNT can be prefixed by 0x66 although it has also a mandatory prefix!
-		Set("f3, 0f, bd", ["LZCNT"], [OPT.REG_FULL, OPT.RM_FULL], IFlag.MODRM_REQUIRED | IFlag.PRE_OP_SIZE)
+		# CYF NOTE: remove instruction longer than 2 bytes
+		# Set("f3, 0f, bd", ["LZCNT"], [OPT.REG_FULL, OPT.RM_FULL], IFlag.MODRM_REQUIRED | IFlag.PRE_OP_SIZE)
 
-		Set("0f, 38, f0", ["MOVBE"], [OPT.REG_FULL, OPT.RM_FULL], IFlag.MODRM_REQUIRED | IFlag._32BITS)
-		Set("0f, 38, f1", ["MOVBE"], [OPT.RM_FULL, OPT.REG_FULL], IFlag.MODRM_REQUIRED | IFlag._32BITS)
+		# Set("0f, 38, f0", ["MOVBE"], [OPT.REG_FULL, OPT.RM_FULL], IFlag.MODRM_REQUIRED | IFlag._32BITS)
+		# Set("0f, 38, f1", ["MOVBE"], [OPT.RM_FULL, OPT.REG_FULL], IFlag.MODRM_REQUIRED | IFlag._32BITS)
 
 		# New instructions from Intel 2008:
-		Set("0f, 01, d0", ["XGETBV"], [], IFlag._32BITS)
-		Set("0f, 01, d1", ["XSETBV"], [], IFlag._32BITS)
-		Set("0f, ae /04", ["XSAVE", "", "XSAVE64"], [OPT.MEM], IFlag.MODRM_REQUIRED | IFlag._32BITS | IFlag._64BITS | IFlag.PRE_REX | IFlag.USE_EXMNEMONIC2)
+		# Set("0f, 01, d0", ["XGETBV"], [], IFlag._32BITS)
+		# Set("0f, 01, d1", ["XSETBV"], [], IFlag._32BITS)
 		# XRSTOR is declared below (see LFENCE), cause it is shared with LFENCE.
 
 		# New instruction from Intel September 2009:

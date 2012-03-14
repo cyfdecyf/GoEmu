@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import x86sets
 from x86header import *
 
@@ -17,25 +19,29 @@ class InstructionDB():
 		self.name_opid = {}
 		# Current largest instruction id. Opcode id is only used in Go code.
 		self.insn_opid = 0
-		# Hold opcode information, (opcode, opcodeid, flags, [4 operand])
+		# Hold opcode information, (opcode, opcode length, opcodeid, flags, [4 operand])
 		self.insn_info = []
 		self.opid_name = None
+		self.processed = False
 
-	def init_opid_name(self):
+	def post_process(self):
+		if self.processed:
+			return
 		if self.opid_name == None:
 			self.opid_name = [ (opid, name) for (name, opid) in self.name_opid.iteritems() ]
-		self.opid_name.sort()
+			self.opid_name.sort()
+		self.insn_info.sort()
+		self.processed = True
 
 	def dump_insn_name(self):
-		self.init_opid_name()
 		insn_list = [ '\t%#04x: "%s",\n' % (opid, name.lower()) for (opid, name) in self.opid_name ]
-		dump = """var InsnName = [...]string{
+		dump = """// Use opcode id to index instruction mnemonics.
+var InsnName = [...]string{
 %s}
 """ % ''.join(insn_list)
 		return dump
 
 	def dump_opcodeid(self):
-		self.init_opid_name()
 		l = [ "\tInsn_%s\n" % (name.capitalize().replace(' ', '_'),)  for _, name in self.opid_name[1:] ]
 		return """const (
 	Insn_%s byte = iota
@@ -89,15 +95,34 @@ class InstructionDB():
 
 	def SetInstruction(self, *args):
 		""" This function is used in order to insert an instruction info into the DB. """
+		mnemonics = args[2][0].lower()
+		operands = args[3]
+		flags = args[4]
+
 		# *args = ISetClass, OL, pos, mnemonics, operands, flags
 		# Construct an Instruction Info object with the info given in args.
 		opcode = args[1].replace(" ", "").split(",")
 		# The number of bytes is the base length, now we need to check the last entry.
 		pos = [int(i[:2], 16) for i in opcode]
+
+		# if len(self.insn_info):
+		# 	print >>sys.stderr, pos, self.insn_info[-1][0]
+
+		# Allocate new opcode id for new instruction
+		if mnemonics not in self.name_opid:
+			self.name_opid[mnemonics] = self.insn_opid
+			self.insn_opid += 1
+
+		# Note grp 7 instruction would be difficult to handle. We can't just
+		# add the reg field to the opcode id to get the correct id.
+		# If this instruction has the same encoding with the previous one.
+		if len(self.insn_info) > 0 and self.insn_info[-1][0] == pos:
+			return
+
 		last = opcode[-1][2:] # Skip hex of last full byte
 		isModRMIncluded = False # Indicates whether 3 bits of the REG field in the ModRM byte were used.
 		if last[:2] == "//": # Divided Instruction
-			pos.append(int(last[2:], 16))
+			#pos.append(int(last[2:], 16))
 			isModRMIncluded = True
 			try:
 				OL = {1:OpcodeLength.OL_1d, 2:OpcodeLength.OL_2d}[len(opcode)]
@@ -105,7 +130,7 @@ class InstructionDB():
 				raise DBException("Invalid divided instruction opcode")
 		elif last[:1] == "/": # Group Instruction
 			isModRMIncluded = True
-			pos.append(int(last[1:], 16))
+			#pos.append(int(last[1:], 16))
 			try:
 				OL = {1:OpcodeLength.OL_13, 2:OpcodeLength.OL_23, 3:OpcodeLength.OL_33}[len(opcode)]
 			except KeyError:
@@ -119,12 +144,9 @@ class InstructionDB():
 			except KeyError:
 				raise DBException("Invalid normal instruction opcode")
 
-		mnemonics = args[2][0].lower()
-		operands = args[3]
-		flags = args[4]
-		if mnemonics not in self.name_opid:
-			self.name_opid[mnemonics] = self.insn_opid
-			self.insn_opid += 1
+		if isModRMIncluded:
+			flags |= InstFlag.MODRM_INCLUDED
+
 		opcodeid = self.name_opid[mnemonics]
 		insninfo = (pos, OL, opcodeid, flags, operands)
 		# print insninfo
@@ -229,12 +251,42 @@ class InstructionDB():
 
 	PKG = 'package dis\n'
 
+	def dump_insninfo(self):
+		insn_list = [] # table for the 1st byte of instruction
+		insn_list2 = [] # table for the 2nd byte of instruction
+		insn_list3 = [] # table for the 3rd byte of instruction
+		for (pos, OL, opcodeid, flag, operand) in self.insn_info:
+			if OL in (OpcodeLength.OL_1, OpcodeLength.OL_13, OpcodeLength.OL_1d):
+				s = '\t%#04x: InsnInfo{ %#04x, %#x, [4]byte{%s} },\n' % (pos[0], opcodeid, flag, ', '.join(['%d' % i for i in operand]))
+				insn_list.append(s)
+			elif OL in (OpcodeLength.OL_2, OpcodeLength.OL_23, OpcodeLength.OL_2d):
+				s = '\t%#04x: InsnInfo{ %#04x, %#x, [4]byte{%s} },\n' % (pos[1], opcodeid, flag, ', '.join(['%d' % i for i in operand]))
+				insn_list2.append(s)
+			else:
+				print pos
+				raise DBException("Does not support instruction longer than 2 bytes")
+				# s = '\t%#04x: InsnInfo{ %#04x, %#x, [4]byte{%s} },\n' % (pos[3], opcodeid, flag, ', '.join(['%d' % i for i in operand]))
+				# insn_list2.append(s)
+
+		dump = """// Opcode to instruction info map.
+// Table for the 1st byte of instruction
+var InsnDB = [...]InsnInfo{
+%s}
+
+// Table for the 2nd byte of instruction
+var InsnDB2 = [...]InsnInfo{
+%s}
+""" % (''.join(insn_list), ''.join(insn_list2))
+		return dump
+
 	def dump(self):
+		self.post_process()
 		print self.PKG
 		print self.INSN_FLAGS
 		print self.OPERAND_TYPE
 		print self.dump_opcodeid()
 		print self.dump_insn_name()
+		print self.dump_insninfo()
 
 def main():
 	db = InstructionDB()
