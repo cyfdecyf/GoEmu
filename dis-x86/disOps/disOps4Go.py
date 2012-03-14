@@ -95,9 +95,9 @@ var InsnName = [...]string{
 
 	def SetInstruction(self, *args):
 		""" This function is used in order to insert an instruction info into the DB. """
-		mnemonics = args[2][0].lower()
-		operands = args[3]
+		mnemonics = [a.lower() for a in args[2]]
 		flags = args[4]
+		operands = args[3]
 
 		# *args = ISetClass, OL, pos, mnemonics, operands, flags
 		# Construct an Instruction Info object with the info given in args.
@@ -108,10 +108,14 @@ var InsnName = [...]string{
 		# if len(self.insn_info):
 		# 	print >>sys.stderr, pos, self.insn_info[-1][0]
 
-		# Allocate new opcode id for new instruction
-		if mnemonics not in self.name_opid:
-			self.name_opid[mnemonics] = self.insn_opid
-			self.insn_opid += 1
+		# Allocate new opcode id for new mnemonics
+		for mn in mnemonics:
+			if mn not in self.name_opid and mn != "":
+				self.name_opid[mn] = self.insn_opid
+				self.insn_opid += 1
+
+		# Use the lowest opcode id if mnemonics is modrm based
+		opcodeid = self.name_opid[mnemonics[0]]
 
 		# Note grp 7 instruction would be difficult to handle. We can't just
 		# add the reg field to the opcode id to get the correct id.
@@ -147,7 +151,6 @@ var InsnName = [...]string{
 		if isModRMIncluded:
 			flags |= InstFlag.MODRM_INCLUDED
 
-		opcodeid = self.name_opid[mnemonics]
 		insninfo = (pos, OL, opcodeid, flags, operands)
 		# print insninfo
 		self.insn_info.append(insninfo)
