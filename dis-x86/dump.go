@@ -5,17 +5,6 @@ import (
 	"log"
 )
 
-var insnName = [...]string{
-	OpAdd:  "add",
-	OpMov:  "mov",
-	OpPush: "push",
-	OpPop:  "pop",
-	OpLea:  "lea",
-	OpRet:  "ret",
-	OpInc:  "inc",
-	OpDec:  "dec",
-}
-
 var regName = [...]string{
 	Eax: "ax",
 	Ecx: "cx",
@@ -48,24 +37,32 @@ var regName8 = [...]string{
 }
 
 // Return the string name of a register
-func (dc *DisContext) formatReg(reg byte) (name string) {
-	switch dc.EffectiveOperandSize() {
+func (dc *DisContext) formatReg(reg byte, size byte) (name string) {
+	if size == OpSizeFull {
+		size = dc.EffectiveOperandSize()
+	}
+	// debug.Println("size:", size, "reg:", reg)
+	switch size {
 	case OpSizeByte:
 		name = regName8[reg]
 	case OpSizeWord:
 		name = regName[reg]
 	case OpSizeLong:
 		name = "e" + regName[reg]
+		// debug.Println(name)
 	case OpSizeQuad:
 		name = "r" + regName[reg]
 	default:
-		log.Fatalf("operand size %d not correct\n", dc.EffectiveOperandSize())
+		log.Fatalf("reg size %d not correct\n", size)
 	}
 	return "%" + name
 }
 
-func (dc *DisContext) dumpReg() string {
-	return dc.formatReg(dc.Reg)
+func (dc *DisContext) dumpReg(size byte) string {
+	if size == OpSizeFull {
+		size = dc.EffectiveOperandSize()
+	}
+	return dc.formatReg(dc.Reg, size)
 }
 
 func dumpSignedValue(size byte, val int32) (dump string) {
@@ -85,34 +82,49 @@ func (dc *DisContext) dumpDisp() (dump string) {
 }
 
 func (dc *DisContext) dumpImm() (dump string) {
-	return "$" + dumpSignedValue(OpSizeLong, dc.ImmOff)
+	return fmt.Sprintf("$%#x", dc.ImmOff)
 }
 
-func (dc *DisContext) dumpOffset() string {
-	// Offset are unsigned
-	return fmt.Sprintf("%#x", uint32(dc.ImmOff))
-}
-
-func (dc *DisContext) dumpRm() (dump string) {
+func (dc *DisContext) dumpRm(operandSize, addressSize byte) (dump string) {
 	if dc.Mod == 3 {
-		return dc.formatReg(dc.Rm)
+		// debug.Println("modrm = 3")
+		if operandSize == OpSizeFull {
+			operandSize = dc.EffectiveOperandSize()
+		}
+		// debug.Println("operandSize:", operandSize)
+		return dc.formatReg(dc.Rm, operandSize)
 	}
 
-	if dc.EffectiveAddressSize() == OpSizeLong {
-		return dc.dumpRm32bit()
+	if addressSize == OpSizeFull {
+		addressSize = dc.EffectiveAddressSize()
 	}
-	return "not supported"
+	switch addressSize {
+	case OpSizeLong:
+		dump = dc.dumpRm32bit()
+	case OpSizeWord:
+		dump = dc.dumpRm16bit()
+	}
+	return
 }
 
 func (dc *DisContext) dumpRm32bit() (dump string) {
+	// First output displacement
 	if dc.DispSize != 0 {
 		dump = dc.dumpDisp()
 	}
 	if dc.Scale != 0 {
 		dump += dc.dumpSIB()
 	} else if !(dc.Rm == 5 && dc.Mod == 0) {
-		dump += fmt.Sprintf("(%s)", dc.formatReg(dc.Rm))
+		dump += fmt.Sprintf("(%s)", dc.formatReg(dc.Rm, OpSizeLong))
 	}
+	return
+}
+
+func (dc *DisContext) dumpRm16bit() (dump string) {
+	if dc.DispSize != 0 {
+		dump = dc.dumpDisp()
+	}
+	panic("16bit modrm not supported now.")
 	return
 }
 
@@ -121,61 +133,79 @@ func (dc *DisContext) dumpSIB() string {
 	var scale, base, index string
 
 	if !(dc.Base == 5 && dc.Mod == 0) {
-		base = dc.formatReg(dc.Base)
+		// SIB is only allowed in 32-bit mode
+		base = dc.formatReg(dc.Base, OpSizeLong)
 	}
 
 	if dc.Index != 4 {
 		// XXX What does none mean for scale index? Only use the base register
 		// in SIB?
-		index = dc.formatReg(dc.Index)
+		index = dc.formatReg(dc.Index, OpSizeLong)
 		scale = fmt.Sprintf("%d", dc.Scale)
 	}
 	return fmt.Sprintf("(%s,%s,%s)", base, index, scale)
 }
 
 func (dc *DisContext) DumpInsn() (dump string) {
-	switch dc.Noperand {
-	case 0:
-		dump = dc.dump0OpInsn()
+	dump = InsnName[dc.Info.OpId] + " "
+	cnt := 0
+	for _, op := range dc.Info.Operand {
+		if op == OT_NONE {
+			break
+		}
+		cnt++
+	}
+	switch cnt {
 	case 1:
-		dump = dc.dump1OpInsn()
+		dump += dc.dumpOperand(dc.Info.Operand[0])
 	case 2:
-		dump = dc.dump2OpInsn()
-	default:
-		log.Fatalln("Operand size not correct or supported.")
+		dump += dc.dumpOperand(dc.Info.Operand[1])
+		dump += ","
+		dump += dc.dumpOperand(dc.Info.Operand[0])
 	}
 	return
 }
 
 func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	switch operand {
-	case OperandMOffByte, OperandMOff:
-		dump = dc.dumpOffset()
-	case OperandImm:
+	// Immediate value
+	case OT_IMM8, OT_IMM16, OT_IMM32, OT_IMM_FULL:
 		dump = dc.dumpImm()
-	case OperandImmByte:
-		dump = dc.dumpImm()
-	case OperandReg:
-		dump = dc.dumpReg()
-	case OperandRegByte:
-		dump = "%" + regName8[dc.Reg]
-	case OperandRm:
-		dump = dc.dumpRm()
-	case OperandSegReg:
+
+	// Memory offset are always unsigned
+	case OT_MOFFS8, OT_MOFFS_FULL:
+		dump = fmt.Sprintf("%#x", uint32(dc.ImmOff))
+
+	// Register
+	case OT_REG8, OT_IB_RB, OT_ACC8,
+		OT_REG16, OT_ACC16,
+		OT_REG32,
+		OT_REG_FULL, OT_IB_R_FULL, OT_ACC_FULL:
+		// debug.Println("dump reg")
+		dump = dc.dumpReg(ot2size[operand])
+	// Segment register
+	case OT_SREG, OT_SEG:
 		dump = "%" + segRegName[dc.Reg]
+
+	// RM
+	// RM8 means the operand size is 8, but is the same with RM_FULL for
+	// address, which depends on address-size attribute.
+	// Example: mov (0x88) -- RM8, mov (0x89) -- RM_FULL
+	case OT_RM8, OT_RM_FULL:
+		// debug.Println("dump rm")
+		dump = dc.dumpRm(ot2size[operand], OpSizeFull)
+	// Some instruction forces 16 bit addressing. Exmaple: mov (0x8e).
+	// XXX I think 0x8e should also be RFULL_M16. Fix this after getting answer for
+	// the submitted issue http://code.google.com/p/distorm/issues/detail?id=45
+	case OT_RM16:
+		// dump = dc.dumpRm(ot2size[operand], OpSizeWord)
+		// XXX Fix this. Currently to make mov (0x8e) has the same output as objdump.
+		dump = dc.dumpRm(OpSizeLong, OpSizeWord)
+	// Messy x86, sigh. If the operand is register, use 32bit; if it's memory, use 16 bit.
+	// Example: mov (0x8c), when used as register, 32bit, but for memory, 16 bit memory
+	case OT_RFULL_M16:
+		dump = dc.dumpRm(OpSizeLong, OpSizeWord)
 	}
+
 	return
-}
-
-func (dc *DisContext) dump0OpInsn() string {
-	return insnName[dc.Opcode]
-}
-
-func (dc *DisContext) dump1OpInsn() string {
-	return fmt.Sprintf("%s %s", insnName[dc.Opcode], dc.dumpOperand(dc.Src))
-}
-
-func (dc *DisContext) dump2OpInsn() string {
-	return fmt.Sprintf("%s %s,%s", insnName[dc.Opcode],
-		dc.dumpOperand(dc.Src), dc.dumpOperand(dc.Dst))
 }

@@ -31,6 +31,7 @@ func checkDump(dc *DisContext, expected string, t *testing.T) {
 	}
 }
 
+
 func TestPrefixParse(t *testing.T) {
 	binary := SliceReader([]byte{0xf0, 0x88, 0x67, 0x89}) // Add one more byte to avoid EOF
 	dc := NewDisContext(binary)
@@ -77,7 +78,7 @@ func TestArith(t *testing.T) {
 	})
 	dc := NewDisContext(binary)
 	dc.NextInsn()
-	if dc.Opcode != OpAdd {
+	if dc.Info.OpId != Insn_Add {
 		t.Error("Add arithmetic insn not detected")
 	}
 	checkDump(dc, "add %al,(%eax)", t)
@@ -121,6 +122,7 @@ func TestPushPop(t *testing.T) {
 	checkDump(dc.NextInsn(), "pop %ds", t)
 	checkDump(dc.NextInsn(), "", t)
 }
+
 
 func TestMov(t *testing.T) {
 	binary := SliceReader([]byte{

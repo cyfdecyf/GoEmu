@@ -57,40 +57,28 @@ const (
 )
 
 const (
-	OpSizeCalc byte = iota // zero, means need to calculate the size or none
-	OpSizeByte             // size starts from 1, so 0 can be used for none
+	OpSizeNone byte = iota // zero means not defined
+	OpSizeByte
 	OpSizeWord
 	OpSizeLong // Long = DoubleWord
 	OpSizeQuad
-)
-const OpSizeNone byte = 0
-
-// For operand type that does not have size suffix, it means the size depends
-// on operand-size attribute.
-// The same operand type with different suffix should be ordered.
-const (
-	OperandReg byte = iota
-	OperandRegByte
-	OperandRm
-	OperandImm
-	OperandImmByte
-	// The size of the memory offset is determined by the address-size
-	// attribute. The operand type for memory offset here specifies the size of
-	// the data.
-	OperandMOff
-	OperandMOffByte
-	OperandSegReg = 10 // Segment register
+	OpSizeFull // means size depend on operand-size
 )
 
 type InsnInfo struct {
-	Opcode  byte
-	Flag    uint64
+	OpId byte
+	Flag uint64 // Contains information about how to parse the instruction
+	// The operand type is defined in insn.go. Look at diStorm's instructions.h
+	// for the meaning of each operand type.
 	Operand [4]byte
 }
 
 type Instruction struct {
 	Prefix int
-	Opcode int
+	Info   *InsnInfo
+	// For instructions with reg field, they have the same InsnInfo, but
+	// different opcode id. So we have to store opcode id here.
+	OpId byte
 
 	Disp   int32 // Displacement
 	ImmOff int32 // Immediate value or Offset
@@ -124,29 +112,6 @@ type Instruction struct {
 	// Displacement size is associated with ModR/M and SIB byte, can't easily
 	// encode the size information in operand type. So store it here.
 	DispSize byte
-}
-
-func (insn *Instruction) set1Operand(op int, src byte) {
-	insn.Opcode = op
-	insn.Src = src
-	insn.Noperand = 1
-}
-
-func (insn *Instruction) set2Operand(op int, src, dst byte) {
-	insn.Opcode = op
-	insn.Src = src
-	insn.Dst = dst
-	insn.Noperand = 2
-}
-
-const regToRm = 0
-
-func (insn *Instruction) set2OperandModRM(op int, wField, dField byte) {
-	if dField == regToRm {
-		insn.set2Operand(op, OperandRegByte-wField, OperandRm)
-	} else {
-		insn.set2Operand(op, OperandRm, OperandRegByte-wField)
-	}
 }
 
 func (insn *Instruction) insnOperandSize() byte {
@@ -264,6 +229,69 @@ func (dc *DisContext) NextInsn() *DisContext {
 	return dc
 }
 
+func (dc *DisContext) parseOpcode() {
+	opcode := dc.nextByte()
+
+	if opcode != 0x0f {
+		dc.Info = &InsnDB[opcode]
+		// debug.Printf("opcode: %#02x\n", opcode)
+	} else {
+		opcode = dc.nextByte()
+		dc.Info = &InsnDB2[opcode]
+		// debug.Printf("opcode: 0f, %#02x\n", opcode)
+	}
+
+	if dc.Info.Flag&IFLAG_MODRM_REQUIRED != 0 {
+		// debug.Println("parse modrm")
+		dc.parseModRM()
+	}
+	if dc.Info.Flag&IFLAG_MODRM_INCLUDED == 0 {
+		dc.OpId = dc.Info.OpId
+	} else {
+		dc.OpId = dc.Info.OpId + dc.Reg
+		// debug.Println("reg field as insn encoding")
+	}
+	dc.parseOperand(opcode)
+}
+
+func (dc *DisContext) parseOperand(opcode byte) {
+	for _, op := range dc.Info.Operand {
+		if op == OT_NONE {
+			break
+		}
+
+		switch byte(op) {
+		case OT_ACC8, OT_ACC16, OT_ACC_FULL:
+			// debug.Println("parseOperand eax as reg")
+			dc.Reg = Eax
+		// Immediate value
+		case OT_IMM8, OT_IMM16, OT_IMM32:
+			// debug.Println("parseOperand read immediate")
+			dc.ImmOff = dc.readNBytes(ot2size[op])
+		case OT_IMM_FULL:
+			// debug.Println("parseOperand read full immediate")
+			dc.ImmOff = dc.readNBytes(dc.EffectiveOperandSize())
+
+		// Instruction block (opcode) contains reg field
+		case OT_IB_R_FULL, OT_IB_RB:
+			// debug.Println("parseOperand instruction block contains reg field")
+			dc.Reg = opcode & 0x7
+		case OT_SEG:
+			// debug.Println("parseOperand opcode lowest 3 bits contains reg field")
+			dc.Reg = opcode >> 3 & 0x03
+
+		// Memory offset. Only used by mov (memory offset)
+		case OT_MOFFS8, OT_MOFFS_FULL:
+			// According to Intel Manual, the size of the offset is affected
+			// by address-size attribute. The size of the data is either
+			// determinied by the instruction itself or operand-size
+			// attribute.
+			// debug.Println("parseOperand moffset")
+			dc.ImmOff = dc.readNBytes(dc.EffectiveAddressSize())
+		}
+	}
+}
+
 /* Reading binary */
 
 var readBuf = [...][]byte{
@@ -352,15 +380,12 @@ func (dc *DisContext) parseAfterModRM32bit() {
 	switch dc.Mod {
 	case 0:
 		if dc.Rm == 5 {
-			dc.Disp = int32(dc.nextLong())
-			dc.DispSize = OpSizeLong
+			dc.getDisp(OpSizeLong)
 		}
 	case 1:
-		dc.Disp = int32(dc.nextByte())
-		dc.DispSize = OpSizeByte
+		dc.getDisp(OpSizeByte)
 	case 2:
-		dc.Disp = int32(dc.nextLong())
-		dc.DispSize = OpSizeLong
+		dc.getDisp(OpSizeLong)
 	}
 }
 
@@ -383,6 +408,7 @@ func (dc *DisContext) parseSIB() {
 	dc.Scale, dc.Index, dc.Base = parseBitField(dc.nextByte())
 	dc.Scale = 1 << dc.Scale
 
+	// debug.Println("parseModRM")
 	if dc.Base == 5 {
 		switch dc.Mod {
 		case 0, 2:
@@ -390,19 +416,6 @@ func (dc *DisContext) parseSIB() {
 		case 1:
 			dc.getDisp(OpSizeByte)
 		}
-	}
-}
-
-/* Immediate value */
-
-func (dc *DisContext) getImmediate(ot byte) {
-	switch ot {
-	case OperandImm:
-		dc.ImmOff = dc.readNBytes(dc.EffectiveOperandSize())
-	case OperandImmByte:
-		dc.ImmOff = int32(dc.nextByte())
-	default:
-		log.Fatalf("Immediate operand type wrong %d\n", ot)
 	}
 }
 
@@ -414,4 +427,9 @@ func (dc *DisContext) getDisp(size byte) {
 // Get memory offset
 func (dc *DisContext) getMOffset() {
 	dc.ImmOff = int32(dc.readNBytes(dc.EffectiveAddressSize()))
+}
+
+func init() {
+	// Additional set up for operand type to size mapping
+	ot2size[OT_IB_RB] = OpSizeByte
 }
