@@ -51,7 +51,7 @@ var InsnName = [...]string{
 	# copied from x86header.py
 	INSN_FLAGS =  """const (
 	IFLAG_NONE = iota
-	IFLAG_MODRM_REQUIRED = 1 << iota - 1
+	IFLAG_MODRM_REQUIRED = 1 << (iota - 1)
 	IFLAG_NOT_DIVIDED
 	IFLAG_16BITS
 	IFLAG_32BITS
