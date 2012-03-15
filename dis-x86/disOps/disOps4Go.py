@@ -264,7 +264,29 @@ var InsnName = [...]string{
 )
 """
 
-	PKG = 'package dis\n'
+	def dump_ot2size(self):
+		otwithsize = []
+		lines = self.OPERAND_TYPE.splitlines()
+		for line in lines:
+			line = line.strip()
+			if not line.startswith("OT_"): continue
+			if line.find('FULL') != -1:
+				otwithsize.append(line + ': OpSizeFull,\n')
+			elif line.find('IMM') != -1 or line.find('MEM') != -1 or line.find('REG') != -1 or \
+				line.find('RM') != -1 or line.find('ACC') != -1:
+				if line.find('128') != -1:
+					continue
+				elif line.find('8') != -1:
+					otwithsize.append(line + ': OpSizeByte,\n')
+				elif line.find('16') != -1:
+					otwithsize.append(line + ': OpSizeWord,\n')
+				elif line.find('32') != -1:
+					otwithsize.append(line + ': OpSizeLong,\n')
+		dump = """var ot2size = [%d]byte{
+	%s
+}
+""" % (len(lines) - 2, '\t'.join(otwithsize))
+		return dump
 
 	def dump_insninfo(self):
 		insn_list = [] # table for the 1st byte of instruction
@@ -296,9 +318,10 @@ var InsnDB2 = [...]InsnInfo{
 
 	def dump(self):
 		self.post_process()
-		print self.PKG
+		print 'package dis\n'
 		print self.INSN_FLAGS
 		print self.OPERAND_TYPE
+		print self.dump_ot2size()
 		print self.dump_opcodeid()
 		print self.dump_insn_name()
 		print self.dump_insninfo()
