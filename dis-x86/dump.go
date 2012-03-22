@@ -194,13 +194,9 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	case OT_RM8, OT_RM_FULL:
 		// debug.Println("dump rm")
 		dump = dc.dumpRm(ot2size[operand], OpSizeFull)
-	// Some instruction forces 16 bit addressing. Exmaple: mov (0x8e).
-	// XXX I think 0x8e should also be RFULL_M16. Fix this after getting answer for
-	// the submitted issue http://code.google.com/p/distorm/issues/detail?id=45
+	// Some instruction forces 16 bit addressing. Exmaple: arpl (0x63)
 	case OT_RM16:
-		// dump = dc.dumpRm(ot2size[operand], OpSizeWord)
-		// XXX Fix this. Currently to make mov (0x8e) has the same output as objdump.
-		dump = dc.dumpRm(OpSizeLong, OpSizeWord)
+		dump = dc.dumpRm(ot2size[operand], OpSizeWord)
 	// Messy x86, sigh. If the operand is register, use 32bit; if it's memory, use 16 bit.
 	// Example: mov (0x8c), when used as register, 32bit, but for memory, 16 bit memory
 	case OT_RFULL_M16:
