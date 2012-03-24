@@ -3,6 +3,7 @@ package dis
 import (
 	"io"
 	"testing"
+	"debug/elf"
 )
 
 type SliceReader []byte
@@ -148,4 +149,23 @@ func TestMov(t *testing.T) {
 	checkDump(dc.NextInsn(), "mov %ss,%eax", t)
 	checkDump(dc.NextInsn(), "mov %eax,%ds", t)
 	checkDump(dc.NextInsn(), "mov %ecx,%ds", t)
+}
+
+func TestLinuxKernel(t *testing.T) {
+	f, e1 := elf.Open("testdata/vmlinux")
+	if e1 != nil {
+		t.Fatal("open linux dump failed")
+	}
+	textSection := f.Section(".text")
+	if textSection == nil {
+		t.Fatal("finding text section failed")
+	}
+
+	rawbytes, e2 := textSection.Data()
+	if e2 != nil {
+		t.Fatal("reading text section failed")
+	}
+
+	dc := NewDisContext(SliceReader(rawbytes))
+	checkDump(dc.NextInsn(), "mov 0x2bccc0,%ecx", t)
 }
