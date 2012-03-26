@@ -1,9 +1,11 @@
 package dis
 
 import (
-	"io"
-	"testing"
+	"bufio"
 	"debug/elf"
+	"io"
+	"os"
+	"testing"
 )
 
 type SliceReader []byte
@@ -19,19 +21,26 @@ func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err error) {
 	return i, nil
 }
 
-func checkDump(dc *DisContext, expected string, t *testing.T) {
+func checkDump1(dc *DisContext, expected string, t *testing.T) bool {
 	if dc == nil {
 		if expected != "" {
 			t.Errorf("EOF not handled correctly\n")
 		}
-		return
+		return true
 	}
 	dump := dc.DumpInsn()
 	if dump != expected {
-		t.Errorf("expect: %s\nget:    %s\n", expected, dump)
+		t.Logf("\nexpect: %s\nget:    %s\n", expected, dump)
+		return false
 	}
+	return true
 }
 
+func checkDump(dc *DisContext, expected string, t *testing.T) {
+	if !checkDump1(dc, expected, t) {
+		t.FailNow()
+	}
+}
 
 func TestPrefixParse(t *testing.T) {
 	binary := SliceReader([]byte{0xf0, 0x88, 0x67, 0x89}) // Add one more byte to avoid EOF
@@ -124,7 +133,6 @@ func TestPushPop(t *testing.T) {
 	checkDump(dc.NextInsn(), "", t)
 }
 
-
 func TestMov(t *testing.T) {
 	binary := SliceReader([]byte{
 		0xb0, 0xeb, // mov $0xeb,%al
@@ -151,21 +159,44 @@ func TestMov(t *testing.T) {
 	checkDump(dc.NextInsn(), "mov %ecx,%ds", t)
 }
 
+// Disassemble the Linux kernel vmlinux file, see if the result matches
+// objdump's output.
 func TestLinuxKernel(t *testing.T) {
+	// Open the dump result
+	df, e := os.Open("testdata/dump.vmlinux")
+	if e != nil {
+		t.Fatal("open dump.linux failed")
+	}
+	dumpReader := bufio.NewReaderSize(df, 256)
+
+	// Open vmlinux
 	f, e1 := elf.Open("testdata/vmlinux")
 	if e1 != nil {
-		t.Fatal("open linux dump failed")
+		t.Fatal("open vmlinux failed")
 	}
 	textSection := f.Section(".text")
 	if textSection == nil {
 		t.Fatal("finding text section failed")
 	}
-
 	rawbytes, e2 := textSection.Data()
 	if e2 != nil {
 		t.Fatal("reading text section failed")
 	}
-
 	dc := NewDisContext(SliceReader(rawbytes))
-	checkDump(dc.NextInsn(), "mov 0x2bccc0,%ecx", t)
+
+	for i := 1; ; i++ {
+		line, isPrefix, err := dumpReader.ReadLine()
+		if isPrefix {
+			t.Fatal("Disassemble file has very long line")
+		}
+		if !checkDump1(dc.NextInsn(), string(line), t) {
+			t.Fatal("Failed parsing the", i, "instruction")
+		}
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			t.Fatal("Disassemble file read error:", err)
+		}
+	}
 }
