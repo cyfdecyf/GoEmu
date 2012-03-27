@@ -211,7 +211,7 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	// RM8 means the operand size is 8, but is the same with RM_FULL for
 	// address, which depends on address-size attribute.
 	// Example: mov (0x88) -- RM8, mov (0x89) -- RM_FULL
-	case OT_RM8, OT_RM_FULL:
+	case OT_RM8, OT_RM_FULL, OT_MEM:
 		// debug.Println("dump rm")
 		dump = dc.dumpRm(ot2size[operand], OpSizeFull)
 	// Some instruction forces 16 bit addressing. Exmaple: arpl (0x63)

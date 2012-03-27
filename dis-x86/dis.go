@@ -239,7 +239,7 @@ func (dc *DisContext) parseOpcode() {
 		opcode = dc.nextByte()
 		dc.Info = &InsnDB2[opcode]
 		opcodeAll = opcodeAll<<8 + int(opcode)
-		debug.Printf("opcode: 0x0f, %#02x\n", opcodeAll)
+		// debug.Printf("opcode: 0x0f, %#02x\n", opcodeAll)
 	}
 	if dc.Info.OpId == 0 {
 		panic(fmt.Sprintf("No such opcode %#x", opcodeAll))
