@@ -232,6 +232,7 @@ func (dc *DisContext) NextInsn() *DisContext {
 func (dc *DisContext) parseOpcode() {
 	opcode := dc.nextByte()
 
+	// If this is a escape, we need to access InsnDB2 using the second opcode byte
 	if opcode != 0x0f {
 		dc.Info = &InsnDB[opcode]
 		// debug.Printf("opcode: %#02x\n", opcode)
@@ -288,6 +289,10 @@ func (dc *DisContext) parseOperand(opcode byte) {
 			// attribute.
 			// debug.Println("parseOperand moffset")
 			dc.ImmOff = dc.readNBytes(dc.EffectiveAddressSize())
+
+		// Relative code offset
+		case OT_RELCB:
+			dc.ImmOff = int32(dc.nextByte())
 		}
 	}
 }
