@@ -2,6 +2,7 @@
 
 import x86sets
 from x86header import *
+import sys
 
 """
 Generate instruction definition for GoEmu.
@@ -22,16 +23,11 @@ class InstructionDB():
 		# Hold opcode information, (opcode, opcode length, opcodeid, flags, [4 operand])
 		self.insn_info = []
 		self.opid_name = None
-		self.processed = False
+		self.grp_insn_info = {}
 
 	def post_process(self):
-		if self.processed:
-			return
-		if self.opid_name == None:
-			self.opid_name = [ (opid, name) for (name, opid) in self.name_opid.iteritems() ]
-			self.opid_name.sort()
-		self.insn_info.sort()
-		self.processed = True
+		self.opid_name = [ (opid, name) for (name, opid) in self.name_opid.iteritems() ]
+		self.opid_name.sort()
 
 	def dump_insn_name(self):
 		insn_list = [ '\t%#04x: "%s",\n' % (opid, name.lower()) for (opid, name) in self.opid_name ]
@@ -42,9 +38,11 @@ var InsnName = [...]string{
 		return dump
 
 	def dump_opcodeid(self):
-		l = [ "\tInsn_%s\n" % (name.capitalize().replace(' ', '_'),)  for _, name in self.opid_name[1:] ]
+		# We need to specify iota for the first opcode id
+		l = ( "\tInsn_%s%s// %#04x\n" % (name.capitalize().replace(' ', '_'),
+			len(name) <= 2 and ('\t' * 3) or ('\t' * 2), opid)  for opid, name in self.opid_name[1:] )
 		return """const (
-	Insn_%s byte = iota
+	Insn_%s byte = iota\t// 0x00
 %s)
 """ % (self.opid_name[0][1].capitalize().replace(' ', '_'), ''.join(l))
 
@@ -93,6 +91,20 @@ var InsnName = [...]string{
 )
 """
 
+	def pos2key(self, pos):
+		key = 0
+		for (i, p) in enumerate(pos):
+			key += p << (8 * i)
+		return key
+
+	# Different instructions in the same instruction group may have different
+	# operands. To make handling of this easier, group and divided
+	# instructions will have their instruction info stored in a map in the
+	# generated Go file.
+	def addToGrpInsnInfo(self, pos, reg, info):
+		key = self.pos2key(list(reversed(pos + [reg])))
+		self.grp_insn_info[key] = info
+
 	def SetInstruction(self, *args):
 		""" This function is used in order to insert an instruction info into the DB. """
 		mnemonics = [a.lower() for a in args[2]]
@@ -114,20 +126,14 @@ var InsnName = [...]string{
 				self.name_opid[mn] = self.insn_opid
 				self.insn_opid += 1
 
-		# Use the lowest opcode id if mnemonics is modrm based
+		# Use the first mnemonics id if mnemonics is modrm based
 		opcodeid = self.name_opid[mnemonics[0]]
-
-		# If this instruction has the same encoding with the previous one, we
-		# can just ignore this one because this is a group instruction. Note
-		# grp 7 instruction would be difficult to handle. We can't just add
-		# the reg field to the opcode id to get the correct id.
-		if len(self.insn_info) > 0 and self.insn_info[-1][0] == pos:
-			return
 
 		last = opcode[-1][2:] # Skip hex of last full byte
 		isModRMIncluded = False # Indicates whether 3 bits of the REG field in the ModRM byte were used.
 		if last[:2] == "//": # Divided Instruction
-			#pos.append(int(last[2:], 16))
+			reg = int(last[2:], 16)
+			assert reg < 0xff
 			isModRMIncluded = True
 			try:
 				OL = {1:OpcodeLength.OL_1d, 2:OpcodeLength.OL_2d}[len(opcode)]
@@ -135,7 +141,8 @@ var InsnName = [...]string{
 				raise DBException("Invalid divided instruction opcode")
 		elif last[:1] == "/": # Group Instruction
 			isModRMIncluded = True
-			#pos.append(int(last[1:], 16))
+			reg = int(last[1:], 16)
+			assert reg < 0xf
 			try:
 				OL = {1:OpcodeLength.OL_13, 2:OpcodeLength.OL_23, 3:OpcodeLength.OL_33}[len(opcode)]
 			except KeyError:
@@ -149,11 +156,18 @@ var InsnName = [...]string{
 			except KeyError:
 				raise DBException("Invalid normal instruction opcode")
 
-		if isModRMIncluded:
-			flags |= InstFlag.MODRM_INCLUDED
+		insninfo = [pos, OL, opcodeid, flags, operands]
 
-		insninfo = (pos, OL, opcodeid, flags, operands)
-		# print insninfo
+		# Store the instruction info in the grp insntruction specific map
+		if isModRMIncluded:
+			insninfo[3] |= InstFlag.MODRM_INCLUDED
+			self.addToGrpInsnInfo(pos, reg, insninfo)
+
+		# In case handling instruction with modrm included, we still need to
+		# add (only one) InsnInfo in the 1st and 2nd InsnDB, so we know we
+		# need to look up in the grpInsnInfo map to get the actual InsnInfo.
+		if len(self.insn_info) > 0 and self.insn_info[-1][0] == pos:
+			return
 		self.insn_info.append(insninfo)
 
 		# Generate all opcode for instructions which use the lowest 3 bits are reg field
@@ -288,17 +302,17 @@ var InsnName = [...]string{
 """ % (len(lines) - 2, '\t'.join(otwithsize))
 		return dump
 
+	def dump_1insn(self, pos, opcodeid, flag, operand):
+		return '%#04x: InsnInfo{ %#04x, %#x, [4]byte{%s} },\n' % (pos, opcodeid, flag, ', '.join('%d' % i for i in operand))
+
 	def dump_insninfo(self):
 		insn_list = [] # table for the 1st byte of instruction
 		insn_list2 = [] # table for the 2nd byte of instruction
-		insn_list3 = [] # table for the 3rd byte of instruction
 		for (pos, OL, opcodeid, flag, operand) in self.insn_info:
 			if OL in (OpcodeLength.OL_1, OpcodeLength.OL_13, OpcodeLength.OL_1d):
-				s = '\t%#04x: InsnInfo{ %#04x, %#x, [4]byte{%s} },\n' % (pos[0], opcodeid, flag, ', '.join(['%d' % i for i in operand]))
-				insn_list.append(s)
+				insn_list.append(self.dump_1insn(pos[0], opcodeid, flag, operand))
 			elif OL in (OpcodeLength.OL_2, OpcodeLength.OL_23, OpcodeLength.OL_2d):
-				s = '\t%#04x: InsnInfo{ %#04x, %#x, [4]byte{%s} },\n' % (pos[1], opcodeid, flag, ', '.join(['%d' % i for i in operand]))
-				insn_list2.append(s)
+				insn_list2.append(self.dump_1insn(pos[1], opcodeid, flag, operand))
 			else:
 				print pos
 				raise DBException("Does not support instruction longer than 2 bytes")
@@ -308,12 +322,35 @@ var InsnName = [...]string{
 		dump = """// Opcode to instruction info map.
 // Table for the 1st byte of instruction
 var InsnDB = [...]InsnInfo{
-%s}
+	%s}
 
 // Table for the 2nd byte of instruction
 var InsnDB2 = [...]InsnInfo{
 %s}
-""" % (''.join(insn_list), ''.join(insn_list2))
+""" % ('\t'.join(insn_list), '\t'.join(insn_list2))
+		return dump
+
+	def dump_grp_insninfo(self):
+		# Go's address operator has limitations. So here I use a map to get
+		# the index into an array to get around that limitation. Don't need
+
+		# the opcode in the dumped instruction info here is not needed
+		insninfo_arr = [ (key, v) for (key, v) in self.grp_insn_info.iteritems() ]
+		insninfo_arr.sort()
+		idx = []
+		infos = []
+		for (i, (key, (pos, _, opcodeid, flag, operand))) in enumerate(insninfo_arr):
+			if key >= 0xf0000:
+				idx.append("\t%#08x: %d,\n" % (key, i))
+			else:
+				idx.append("\t%#06x: %d,\n" % (key, i))
+			infos.append("\t%d: %s" % (i, self.dump_1insn(pos[0], opcodeid, flag, operand)[6:]))
+
+		dump = """var grpInsnInfoIndex = map[int]int{
+%s}
+
+var grpInsnInfo = [...]InsnInfo{
+%s}""" % (''.join(idx), ''.join(infos))
 		return dump
 
 	def dump(self):
@@ -325,6 +362,7 @@ var InsnDB2 = [...]InsnInfo{
 		print self.dump_opcodeid()
 		print self.dump_insn_name()
 		print self.dump_insninfo()
+		print self.dump_grp_insninfo()
 
 def main():
 	db = InstructionDB()

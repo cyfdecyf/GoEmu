@@ -152,7 +152,7 @@ var insnSizeSuffix = [...]string{
 
 func (dc *DisContext) dumpInsn() (dump string) {
 	dump = InsnName[dc.Info.OpId]
-	switch dc.OpId {
+	switch dc.Info.OpId {
 	case Insn_Test:
 		// For test (0xf6), operand size is always 8bit. But when dumping
 		// ModRM with memory reference, we always use 32bit register. I guess

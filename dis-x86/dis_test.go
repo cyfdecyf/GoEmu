@@ -24,7 +24,7 @@ func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err error) {
 func checkDump1(dc *DisContext, expected string, t *testing.T) bool {
 	if dc == nil {
 		if expected != "" {
-			t.Errorf("EOF not handled correctly\n")
+			t.Fatal("EOF not handled correctly")
 		}
 		return true
 	}
@@ -184,6 +184,7 @@ func TestLinuxKernel(t *testing.T) {
 	}
 	dc := NewDisContext(SliceReader(rawbytes))
 
+	// Test instruction dump one by one
 	for i := 1; ; i++ {
 		line, isPrefix, err := dumpReader.ReadLine()
 		if isPrefix {
