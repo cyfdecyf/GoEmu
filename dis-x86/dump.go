@@ -146,8 +146,26 @@ func (dc *DisContext) dumpSIB() string {
 	return fmt.Sprintf("(%s,%s,%s)", base, index, scale)
 }
 
+var insnSizeSuffix = [...]string{
+	OT_RM8: "b",
+}
+
+func (dc *DisContext) dumpInsn() (dump string) {
+	dump = InsnName[dc.Info.OpId]
+	switch dc.OpId {
+	case Insn_Test:
+		// For test (0xf6), operand size is always 8bit. But when dumping
+		// ModRM with memory reference, we always use 32bit register. I guess
+		// this is why objdump appends the 'b' suffix.
+		if dc.Mod != 3 {
+			dump += insnSizeSuffix[dc.Info.Operand[0]]
+		}
+	}
+	return dump + " "
+}
+
 func (dc *DisContext) DumpInsn() (dump string) {
-	dump = InsnName[dc.Info.OpId] + " "
+	dump = dc.dumpInsn()
 	cnt := 0
 	for _, op := range dc.Info.Operand {
 		if op == OT_NONE {
