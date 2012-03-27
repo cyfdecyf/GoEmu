@@ -19,7 +19,9 @@ class InstructionDB():
 		# Holds all the instructions, { "name" : opcodeId }
 		self.name_opid = {}
 		# Current largest instruction id. Opcode id is only used in Go code.
-		self.insn_opid = 0
+		# Opcode id starts from 1, so we can easily identify whether the
+		# instruction is in the DB.
+		self.insn_opid = 1
 		# Hold opcode information, (opcode, opcode length, opcodeid, flags, [4 operand])
 		self.insn_info = []
 		self.opid_name = None
@@ -39,10 +41,9 @@ var InsnName = [...]string{
 
 	def dump_opcodeid(self):
 		# We need to specify iota for the first opcode id
-		l = ( "\tInsn_%s%s// %#04x\n" % (name.capitalize().replace(' ', '_'),
-			len(name) <= 2 and ('\t' * 3) or ('\t' * 2), opid)  for opid, name in self.opid_name[1:] )
+		l = ( "\tInsn_%s\t// %#04x\n" % (name.capitalize().replace(' ', '_'), opid)  for opid, name in self.opid_name[1:] )
 		return """const (
-	Insn_%s byte = iota\t// 0x00
+	Insn_%s byte = iota+1\t// 0x01
 %s)
 """ % (self.opid_name[0][1].capitalize().replace(' ', '_'), ''.join(l))
 
@@ -326,7 +327,7 @@ var InsnDB = [...]InsnInfo{
 
 // Table for the 2nd byte of instruction
 var InsnDB2 = [...]InsnInfo{
-%s}
+	%s}
 """ % ('\t'.join(insn_list), '\t'.join(insn_list2))
 		return dump
 

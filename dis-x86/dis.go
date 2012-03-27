@@ -2,6 +2,7 @@ package dis
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -77,8 +78,8 @@ type Instruction struct {
 	Prefix int
 	Info   *InsnInfo
 
-	Disp   int32 // Displacement
-	ImmOff int32 // Immediate value or Offset
+	Disp   int32 // Displacement. For lgdt and related, this is the limit
+	ImmOff int32 // Immediate value or Offset. For lgdt and related, this is base
 
 	Mod byte
 	Reg byte
@@ -228,7 +229,7 @@ func (dc *DisContext) NextInsn() *DisContext {
 
 func (dc *DisContext) parseOpcode() {
 	opcode := dc.nextByte()
-	keyInGrpInsn := int(opcode)
+	opcodeAll := int(opcode)
 
 	// If this is a escape, we need to access InsnDB2 using the second opcode byte
 	if opcode != 0x0f {
@@ -237,8 +238,11 @@ func (dc *DisContext) parseOpcode() {
 	} else {
 		opcode = dc.nextByte()
 		dc.Info = &InsnDB2[opcode]
-		keyInGrpInsn = keyInGrpInsn<<8 + int(opcode)
-		// debug.Printf("opcode: 0f, %#02x\n", opcode)
+		opcodeAll = opcodeAll<<8 + int(opcode)
+		debug.Printf("opcode: 0x0f, %#02x\n", opcodeAll)
+	}
+	if dc.Info.OpId == 0 {
+		panic(fmt.Sprintf("No such opcode %#x", opcodeAll))
 	}
 
 	if dc.Info.Flag&IFLAG_MODRM_REQUIRED != 0 {
@@ -249,15 +253,13 @@ func (dc *DisContext) parseOpcode() {
 		// Because of Go's address operator's limitation, we first find the
 		// index in the grpInsnInfoIndex, then use the index to access the
 		// grpInsnInfo array.
-		// debug.Printf("Opcode: %#02x reg field %#x used as insn encoding, OpId: %#02x",
-		// 	opcode, dc.Reg, dc.Info.OpId)
-		keyInGrpInsn = keyInGrpInsn<<8 + int(dc.Reg)
-		idx, ok := grpInsnInfoIndex[keyInGrpInsn]
+		opcodeAll = opcodeAll<<8 + int(dc.Reg)
+		idx, ok := grpInsnInfoIndex[opcodeAll]
 		if !ok {
-			debug.Printf("grp insn key: %#x\n", keyInGrpInsn)
-			panic("Group instruction lookup failed")
+			panic(fmt.Sprintf("Group instruction key %#x lookup failed", opcodeAll))
 		}
 		dc.Info = &(grpInsnInfo[idx])
+		// debug.Printf("Opcode: %#02x reg field %#x used as insn encoding, OpId: %#02x", opcodeAll, dc.Reg, dc.Info.OpId)
 	}
 	dc.parseOperand(opcode)
 }

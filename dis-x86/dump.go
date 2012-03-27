@@ -160,6 +160,8 @@ func (dc *DisContext) dumpInsn() (dump string) {
 		if dc.Mod != 3 {
 			dump += insnSizeSuffix[dc.Info.Operand[0]]
 		}
+	case Insn_Lgdt, Insn_Sgdt:
+		dump += "l"
 	}
 	return dump + " "
 }
@@ -219,6 +221,10 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	// Example: mov (0x8c), when used as register, 32bit, but for memory, 16 bit memory
 	case OT_RFULL_M16:
 		dump = dc.dumpRm(OpSizeLong, OpSizeWord)
+
+	case OT_MEM16_3264:
+		// What operand size should we use here?
+		dump = dc.dumpRm(OpSizeLong, OpSizeLong)
 	}
 
 	return
