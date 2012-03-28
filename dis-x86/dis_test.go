@@ -149,6 +149,34 @@ func TestMov(t *testing.T) {
 	testDump(testdata, t)
 }
 
+func TestTest(t *testing.T) {
+	testdata := []codeText{
+		codeText{[]byte{0xf6, 0x86, 0x11, 0x02, 0x00, 0x00, 0x40}, "testb $0x40,0x211(%esi)"},
+	}
+	testDump(testdata, t)
+}
+
+func TestJcc(t *testing.T) {
+	testdata := []codeText{
+		codeText{[]byte{0x75, 0x16}, "jnz "},
+	}
+	testDump(testdata, t)
+}
+
+func TestLgdt(t *testing.T) {
+	testdata := []codeText{
+		codeText{[]byte{0x0f, 0x01, 0x15, 0xd2, 0xcd, 0x2b, 0x00}, "lgdtl 0x2bcdd2"},
+	}
+	testDump(testdata, t)
+}
+
+func TestLea(t *testing.T) {
+	testdata := []codeText{
+		codeText{[]byte{0x8d, 0xa1, 0x00, 0x00, 0x00, 0x40}, "lea 0x40000000(%ecx),%esp"},
+	}
+	testDump(testdata, t)
+}
+
 // Disassemble the Linux kernel vmlinux file, see if the result matches
 // objdump's output.
 func TestLinuxKernel(t *testing.T) {
