@@ -3,6 +3,7 @@ package dis
 import (
 	"bufio"
 	"debug/elf"
+	"fmt"
 	"io"
 	"os"
 	"testing"
@@ -35,6 +36,14 @@ func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err error) {
 	return i, nil
 }
 
+func (dc *DisContext) dumpInsnBinary() (dump string) {
+	bin := dc.binary.(SliceReader)
+	for i := dc.insnStart; i < dc.offset; i++ {
+		dump += fmt.Sprintf("%x ", bin[i])
+	}
+	return
+}
+
 func checkDump1(dc *DisContext, expected string, t *testing.T) bool {
 	if dc == nil {
 		if expected != "" {
@@ -44,7 +53,8 @@ func checkDump1(dc *DisContext, expected string, t *testing.T) bool {
 	}
 	dump := dc.DumpInsn()
 	if dump != expected {
-		t.Logf("\nexpect: %s\nget:    %s\n", expected, dump)
+		t.Logf("\nbinary: %s\nexpect: %s\nget:    %s\n",
+			dc.dumpInsnBinary(), expected, dump)
 		return false
 	}
 	return true

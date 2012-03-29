@@ -130,9 +130,9 @@ func (insn *Instruction) setInsnAddressSize(v byte) {
 
 // Disassemble. Record information in each pass.
 type DisContext struct {
-	// Record position in the binary code
-	binary io.ReaderAt
-	offset int64
+	binary    io.ReaderAt
+	offset    int64 // Record position in the binary code
+	insnStart int64 // Begin offset of the current instruction
 
 	Dflag     bool // Affects the operand-size and address-size attributes
 	Protected bool // in Protected mode?
@@ -221,6 +221,7 @@ func (dc *DisContext) NextInsn() *DisContext {
 	dc.Scale = 0
 	dc.Prefix = 0
 	dc.sizeOverride = 0
+	dc.insnStart = dc.offset
 
 	dc.parsePrefix()
 	dc.parseOpcode()
