@@ -143,8 +143,15 @@ func (dc *DisContext) dumpSIB() string {
 		// in SIB?
 		index = dc.formatReg(dc.Index, OpSizeLong)
 		scale = fmt.Sprintf("%d", dc.Scale)
+	} else if dc.Info.OpId == Insn_Lea {
+		// Don't know why objdump uses "%eiz" when there's no index and scale
+		index = "%eiz"
+		scale = "1"
 	}
-	return fmt.Sprintf("(%s,%s,%s)", base, index, scale)
+	if index != "" || scale != "" {
+		return fmt.Sprintf("(%s,%s,%s)", base, index, scale)
+	}
+	return fmt.Sprintf("(%s)", base)
 }
 
 var insnSizeSuffix = [...]string{
