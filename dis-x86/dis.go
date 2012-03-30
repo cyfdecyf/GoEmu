@@ -306,6 +306,8 @@ func (dc *DisContext) parseOperand(opcode byte) {
 		case OT_RELCB:
 			dc.ImmOff = int32(dc.nextByte())
 			// debug.Printf("RECB: %#x\n", dc.ImmOff)
+		case OT_RELC_FULL:
+			dc.ImmOff = dc.readNBytes(dc.EffectiveAddressSize())
 
 		// sign-extended 8-bit immediate
 		case OT_SEIMM8:
