@@ -187,6 +187,13 @@ func TestLea(t *testing.T) {
 	testDump(testdata, t)
 }
 
+func TestNop(t *testing.T) {
+	testdata := []codeText{
+		codeText{[]byte{0x90}, "nop"},
+	}
+	testDump(testdata, t)
+}
+
 // Disassemble the Linux kernel vmlinux file, see if the result matches
 // objdump's output.
 func TestLinuxKernel(t *testing.T) {

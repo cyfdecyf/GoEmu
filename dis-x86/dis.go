@@ -457,4 +457,6 @@ func init() {
 	// Additional set up for operand type to size mapping
 	ot2size[OT_IB_RB] = OpSizeByte
 	ot2size[OT_REGI_EDI] = OpSizeFull
+
+	InsnDB[0x90] = InsnInfo{Insn_Nop, 0x0, [4]byte{}}
 }
