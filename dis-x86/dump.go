@@ -256,6 +256,7 @@ type insnDumper func(dc *DisContext) string
 
 var specialInsnDump = map[byte]insnDumper{
 	Insn_Stos: dumpStos,
+	Insn_Movs: dumpMovs,
 }
 
 func dumpStos(dc *DisContext) (dump string) {
@@ -264,6 +265,16 @@ func dumpStos(dc *DisContext) (dump string) {
 		panic("not implemented")
 	case OpSizeLong:
 		dump = "stos %eax,%es:(%edi)"
+	}
+	return
+}
+
+func dumpMovs(dc *DisContext) (dump string) {
+	switch dc.EffectiveAddressSize() {
+	case OpSizeWord:
+		panic("not implemented")
+	case OpSizeLong:
+		dump = "movsl %ds:(%esi),%es:(%edi)"
 	}
 	return
 }
