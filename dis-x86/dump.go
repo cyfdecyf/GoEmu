@@ -83,7 +83,7 @@ func (dc *DisContext) dumpDisp() (dump string) {
 }
 
 func (dc *DisContext) dumpImm() (dump string) {
-	return fmt.Sprintf("$%#x", dc.ImmOff)
+	return fmt.Sprintf("$%#x", uint32(dc.ImmOff))
 }
 
 func (dc *DisContext) dumpRm(operandSize, addressSize byte) (dump string) {

@@ -39,7 +39,7 @@ func (buf SliceReader) ReadAt(p []byte, off int64) (n int, err error) {
 func (dc *DisContext) dumpInsnBinary() (dump string) {
 	bin := dc.binary.(SliceReader)
 	for i := dc.insnStart; i < dc.offset; i++ {
-		dump += fmt.Sprintf("%x ", bin[i])
+		dump += fmt.Sprintf("%02x ", bin[i])
 	}
 	return
 }
