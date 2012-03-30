@@ -206,7 +206,7 @@ func (dc *DisContext) DumpInsn() (dump string) {
 func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	switch operand {
 	// Immediate value
-	case OT_IMM8, OT_IMM16, OT_IMM32, OT_IMM_FULL:
+	case OT_IMM8, OT_IMM16, OT_IMM32, OT_IMM_FULL, OT_SEIMM8:
 		dump = dc.dumpImm()
 
 	// Memory offset are always unsigned

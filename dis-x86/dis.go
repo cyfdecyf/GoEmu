@@ -305,6 +305,10 @@ func (dc *DisContext) parseOperand(opcode byte) {
 		// Relative code offset
 		case OT_RELCB:
 			dc.ImmOff = int32(dc.nextByte())
+
+		// sign-extended 8-bit immediate
+		case OT_SEIMM8:
+			dc.ImmOff = int32(dc.nextByte())
 		}
 	}
 }
