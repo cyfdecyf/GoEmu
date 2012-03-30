@@ -166,8 +166,21 @@ func (dc *DisContext) dumpInsn() (dump string) {
 	return dump + " "
 }
 
+func (dc *DisContext) dumpPrefix() (dump string) {
+	if dc.Prefix&(PrefixREPZ|PrefixREPNZ) != 0 {
+		dump = "rep "
+	}
+	return
+}
+
 func (dc *DisContext) DumpInsn() (dump string) {
-	dump = dc.dumpInsn()
+	dump = dc.dumpPrefix()
+
+	if dumper, ok := specialInsnDump[dc.Info.OpId]; ok == true {
+		return dump + dumper(dc)
+	}
+
+	dump += dc.dumpInsn()
 	cnt := 0
 	for _, op := range dc.Info.Operand {
 		if op == OT_NONE {
@@ -200,7 +213,8 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	case OT_REG8, OT_IB_RB, OT_ACC8,
 		OT_REG16, OT_ACC16,
 		OT_REG32,
-		OT_REG_FULL, OT_IB_R_FULL, OT_ACC_FULL:
+		OT_REG_FULL, OT_IB_R_FULL, OT_ACC_FULL,
+		OT_REGI_EDI:
 		// debug.Println("dump reg")
 		dump = dc.dumpReg(ot2size[operand])
 	// Segment register
@@ -227,5 +241,25 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 		dump = dc.dumpRm(OpSizeLong, OpSizeLong)
 	}
 
+	return
+}
+
+// Some intructions are difficult to dump because the format returned by
+// objdump is not regular. For those instructions, I just use specific dump
+// function for each instruction.
+
+type insnDumper func(dc *DisContext) string
+
+var specialInsnDump = map[byte]insnDumper{
+	Insn_Stos: dumpStos,
+}
+
+func dumpStos(dc *DisContext) (dump string) {
+	switch dc.EffectiveAddressSize() {
+	case OpSizeWord:
+		panic("not implemented")
+	case OpSizeLong:
+		dump = "stos %eax,%es:(%edi)"
+	}
 	return
 }

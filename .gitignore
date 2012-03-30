@@ -1,3 +1,4 @@
 *.out
 *.sublime-workspace
 dis-x86/insn.go
+*vmlinux
