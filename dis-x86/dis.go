@@ -74,6 +74,17 @@ type InsnInfo struct {
 	Operand [4]byte
 }
 
+func (ii *InsnInfo) countOperand() int {
+	cnt := 0
+	for _, op := range ii.Operand {
+		if op == OT_NONE {
+			break
+		}
+		cnt++
+	}
+	return cnt
+}
+
 type Instruction struct {
 	Prefix int
 	Info   *InsnInfo

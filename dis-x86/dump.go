@@ -185,14 +185,7 @@ func (dc *DisContext) DumpInsn() (dump string) {
 	}
 
 	buf.WriteString(dc.dumpInsn())
-	cnt := 0
-	for _, op := range dc.Info.Operand {
-		if op == OT_NONE {
-			break
-		}
-		cnt++
-	}
-	switch cnt {
+	switch dc.Info.countOperand() {
 	case 1:
 		buf.WriteString(dc.dumpOperand(dc.Info.Operand[0]))
 	case 2:
