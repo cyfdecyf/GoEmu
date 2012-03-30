@@ -189,7 +189,14 @@ func TestLea(t *testing.T) {
 
 func TestNop(t *testing.T) {
 	testdata := []codeText{
-		codeText{[]byte{0x90}, "nop"},
+		codeText{[]byte{0x90}, "nop "},
+	}
+	testDump(testdata, t)
+}
+
+func TestCall(t *testing.T) {
+	testdata := []codeText{
+		codeText{[]byte{0xe8, 0x52, 0x9e, 0x0f, 0x00}, "call "},
 	}
 	testDump(testdata, t)
 }
