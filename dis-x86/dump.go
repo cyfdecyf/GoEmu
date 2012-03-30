@@ -1,6 +1,7 @@
 package dis
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 )
@@ -166,21 +167,24 @@ func (dc *DisContext) dumpInsn() (dump string) {
 	return dump + " "
 }
 
-func (dc *DisContext) dumpPrefix() (dump string) {
+func (dc *DisContext) dumpPrefix() string {
 	if dc.Prefix&(PrefixREPZ|PrefixREPNZ) != 0 {
-		dump = "rep "
+		return "rep "
 	}
-	return
+	return ""
 }
 
 func (dc *DisContext) DumpInsn() (dump string) {
-	dump = dc.dumpPrefix()
+	var buf bytes.Buffer
+
+	buf.WriteString(dc.dumpPrefix())
 
 	if dumper, ok := specialInsnDump[dc.Info.OpId]; ok == true {
-		return dump + dumper(dc)
+		buf.WriteString(dumper(dc))
+		return buf.String()
 	}
 
-	dump += dc.dumpInsn()
+	buf.WriteString(dc.dumpInsn())
 	cnt := 0
 	for _, op := range dc.Info.Operand {
 		if op == OT_NONE {
@@ -190,13 +194,13 @@ func (dc *DisContext) DumpInsn() (dump string) {
 	}
 	switch cnt {
 	case 1:
-		dump += dc.dumpOperand(dc.Info.Operand[0])
+		buf.WriteString(dc.dumpOperand(dc.Info.Operand[0]))
 	case 2:
-		dump += dc.dumpOperand(dc.Info.Operand[1])
-		dump += ","
-		dump += dc.dumpOperand(dc.Info.Operand[0])
+		buf.WriteString(dc.dumpOperand(dc.Info.Operand[1]))
+		buf.WriteString(",")
+		buf.WriteString(dc.dumpOperand(dc.Info.Operand[0]))
 	}
-	return
+	return buf.String()
 }
 
 func (dc *DisContext) dumpOperand(operand byte) (dump string) {
