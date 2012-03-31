@@ -79,7 +79,13 @@ func dumpSignedValue(size byte, val int32) (dump string) {
 }
 
 func (dc *DisContext) dumpDisp() (dump string) {
-	return dumpSignedValue(dc.DispSize, dc.Disp)
+	// If the displacement is used alone, take it as unsigned value.
+	if dc.Mod == 0 && dc.Rm == 5 {
+		dump = fmt.Sprintf("%#x", uint32(dc.Disp))
+	} else {
+		dump = dumpSignedValue(dc.DispSize, dc.Disp)
+	}
+	return
 }
 
 func (dc *DisContext) dumpImm() (dump string) {
