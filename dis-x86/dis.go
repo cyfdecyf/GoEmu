@@ -121,6 +121,8 @@ type Instruction struct {
 	// Displacement size is associated with ModR/M and SIB byte, can't easily
 	// encode the size information in operand type. So store it here.
 	DispSize byte
+
+	opcode byte // Ommit escape code
 }
 
 func (insn *Instruction) insnOperandSize() byte {
@@ -253,6 +255,9 @@ func (dc *DisContext) parseOpcode() {
 		opcodeAll = opcodeAll<<8 + int(opcode)
 		// debug.Printf("opcode: 0x0f, %#02x\n", opcodeAll)
 	}
+
+	dc.opcode = opcode
+
 	if dc.Info.OpId == 0 {
 		panic(fmt.Sprintf("No such opcode %#x", opcodeAll))
 	}
