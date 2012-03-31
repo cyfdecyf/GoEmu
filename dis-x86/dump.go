@@ -170,6 +170,11 @@ func (dc *DisContext) dumpInsn() (dump string) {
 		}
 	case Insn_Lgdt, Insn_Sgdt:
 		dump += "l"
+	case Insn_Cmp:
+		switch dc.Info.Operand[0] {
+		case OT_ACC8, OT_IMM8, OT_REG8, OT_RM8, OT_SEIMM8:
+			dump += "b"
+		}
 	}
 	return dump + " "
 }
