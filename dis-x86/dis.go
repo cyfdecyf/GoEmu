@@ -428,7 +428,7 @@ func (dc *DisContext) parseAfterModRM32bit() {
 
 	switch dc.Mod {
 	case 0:
-		if dc.Rm == 5 {
+		if dc.Rm == 5 || (dc.Rm == 4 && dc.Base == 5) {
 			dc.getDisp(OpSizeLong)
 		}
 	case 1:
@@ -456,16 +456,6 @@ func (dc *DisContext) parseSIB() {
 	// SIB has the same bit field allocation with ModR/M byte
 	dc.Scale, dc.Index, dc.Base = parseBitField(dc.nextByte())
 	dc.Scale = 1 << dc.Scale
-
-	// debug.Println("parseModRM")
-	if dc.Base == 5 {
-		switch dc.Mod {
-		case 0, 2:
-			dc.getDisp(OpSizeLong)
-		case 1:
-			dc.getDisp(OpSizeByte)
-		}
-	}
 }
 
 func (dc *DisContext) getDisp(size byte) {
