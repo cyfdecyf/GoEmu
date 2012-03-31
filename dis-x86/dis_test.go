@@ -190,6 +190,7 @@ func TestLea(t *testing.T) {
 func TestNop(t *testing.T) {
 	testdata := []codeText{
 		codeText{[]byte{0x90}, "nop "},
+		codeText{[]byte{0x66, 0x90}, "xchg %ax,%ax"},
 	}
 	testDump(testdata, t)
 }

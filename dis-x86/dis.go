@@ -241,8 +241,17 @@ func (dc *DisContext) NextInsn() *DisContext {
 	return dc
 }
 
+var nopInsnInfo = InsnInfo{Insn_Nop, 0x00, [4]byte{}}
+
 func (dc *DisContext) parseOpcode() {
 	opcode := dc.nextByte()
+
+	// nop is nasty. 0x90 is nop if not prefixed, but if prefixed with 0x66, it's xchg
+	if opcode == 0x90 && dc.Prefix&PrefixOperandSize == 0 {
+		dc.Info = &nopInsnInfo
+		return
+	}
+
 	opcodeAll := int(opcode)
 
 	// If this is a escape, we need to access InsnDB2 using the second opcode byte
@@ -473,6 +482,4 @@ func init() {
 	// Additional set up for operand type to size mapping
 	ot2size[OT_IB_RB] = OpSizeByte
 	ot2size[OT_REGI_EDI] = OpSizeFull
-
-	InsnDB[0x90] = InsnInfo{Insn_Nop, 0x0, [4]byte{}}
 }
