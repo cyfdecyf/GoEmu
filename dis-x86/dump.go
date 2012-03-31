@@ -227,11 +227,10 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 		dump = fmt.Sprintf("%#x", uint32(dc.ImmOff))
 
 	// Register
-	case OT_REG8, OT_IB_RB, OT_ACC8,
-		OT_REG16, OT_ACC16,
-		OT_REG32,
-		OT_REG_FULL, OT_IB_R_FULL, OT_ACC_FULL,
-		OT_REGI_EDI:
+	case OT_REG8, OT_IB_RB, OT_REG16, OT_REG32,
+		OT_REG_FULL, OT_IB_R_FULL,
+		OT_ACC8, OT_ACC16, OT_ACC_FULL,
+		OT_REGI_EDI, OT_REGCL:
 		// debug.Println("dump reg")
 		dump = dc.dumpReg(ot2size[operand])
 	// Segment register

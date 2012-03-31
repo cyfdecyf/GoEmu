@@ -298,8 +298,7 @@ var InsnName = [...]string{
 				elif line.find('32') != -1:
 					otwithsize.append(line + ': OpSizeLong,\n')
 		dump = """var ot2size = [%d]byte{
-	%s
-}
+	%s}
 """ % (len(lines) - 2, '\t'.join(otwithsize))
 		return dump
 

@@ -299,6 +299,8 @@ func (dc *DisContext) parseOperand(opcode byte) {
 		switch byte(op) {
 		case OT_REGI_EDI:
 			dc.Reg = Edi
+		case OT_REGCL:
+			dc.Reg = Cl
 		case OT_ACC8, OT_ACC16, OT_ACC_FULL:
 			// debug.Println("parseOperand eax as reg")
 			dc.Reg = Eax
@@ -472,4 +474,5 @@ func init() {
 	// Additional set up for operand type to size mapping
 	ot2size[OT_IB_RB] = OpSizeByte
 	ot2size[OT_REGI_EDI] = OpSizeFull
+	ot2size[OT_REGCL] = OpSizeByte
 }
