@@ -162,37 +162,33 @@ func (dc *DisContext) dumpSIB() string {
 }
 
 var insnSizeSuffix = []string{
-	OT_ACC8:    "",
-	OT_RM8:     "b",
-	OT_RM_FULL: "l",
+	OT_ACC8:       "",
+	OT_RM8:        "b",
+	OT_RM_FULL:    "l",
+	OT_MEM16_3264: "l",
 }
 
 func (dc *DisContext) dumpInsn() (dump string) {
 	dump = InsnName[dc.Info.OpId]
-	switch dc.Info.OpId {
-	case Insn_Test, Insn_Or:
-		// For test (0xf6), operand size is always 8bit. But when dumping
-		// ModRM with memory reference, we always use 32bit register. I guess
-		// this is why objdump appends the 'b' suffix, it makes us easier to
-		// know the operand size from the instruction name.
-		if dc.Mod != 3 {
+
+	// When the destination operand is memory address, and we can't infer
+	// operand size directly from the src operand, add the appropriate suffix.
+	// Example: test (0xf6), operand size is always 8bit. But when dumping
+	// ModRM with memory reference, we always use 32bit register.
+	if dc.Mod != 3 {
+		switch dc.opcodeAll {
+		case 0x8000, 0x8001, 0x8002, 0x8003, 0x8004, 0x8005, 0x8006, 0x8007, // Immediate Grp 1
+			0x8100, 0x8101, 0x8102, 0x8103, 0x8104, 0x8105, 0x8106, 0x8107, // Immediate Grp 1
+			0x8200, 0x8201, 0x8202, 0x8203, 0x8204, 0x8205, 0x8206, 0x8207, // Immediate Grp 1
+			0x8300, 0x8301, 0x8302, 0x8303, 0x8304, 0x8305, 0x8306, 0x8307, // Immediate Grp 1
+			0xf600, 0xf602, 0xf603, 0xf604, 0xf605, 0xf606, 0xf607, // Unary Grp 3
+			0xf700, 0xf702, 0xf703, 0xf704, 0xf705, 0xf706, 0xf707, // Unary Grp 3
+			0x0f0100, 0x0f0102, // sgdt, lgdt
+			0xc600, 0xc700: // Grp 11 (mov)
 			dump += insnSizeSuffix[dc.Info.Operand[0]]
 		}
-	case Insn_Lgdt, Insn_Sgdt:
-		dump += "l"
-	case Insn_Cmp:
-		switch dc.Info.Operand[0] {
-		case OT_RM8:
-			dump += "b"
-		}
-	case Insn_Mov, Insn_Add:
-		if dc.Mod != 3 {
-			if dc.opcode == 0xc7 || dc.opcode == 0xc6 || // mov
-				dc.opcode == 0x83 { // add
-				dump += insnSizeSuffix[dc.Info.Operand[0]]
-			}
-		}
 	}
+
 	return dump + " "
 }
 

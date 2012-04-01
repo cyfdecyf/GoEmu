@@ -122,7 +122,7 @@ type Instruction struct {
 	// encode the size information in operand type. So store it here.
 	DispSize byte
 
-	opcode byte // Ommit escape code
+	opcodeAll int // Include escape code, and reg field if needed. e.g. str has (0x0f0001)
 }
 
 func (insn *Instruction) insnOperandSize() byte {
@@ -252,7 +252,7 @@ func (dc *DisContext) parseOpcode() {
 		return
 	}
 
-	opcodeAll := int(opcode)
+	dc.opcodeAll = int(opcode)
 
 	// If this is a escape, we need to access InsnDB2 using the second opcode byte
 	if opcode != 0x0f {
@@ -261,14 +261,12 @@ func (dc *DisContext) parseOpcode() {
 	} else {
 		opcode = dc.nextByte()
 		dc.Info = &InsnDB2[opcode]
-		opcodeAll = opcodeAll<<8 + int(opcode)
-		// debug.Printf("opcode: 0x0f, %#02x\n", opcodeAll)
+		dc.opcodeAll = dc.opcodeAll<<8 + int(opcode)
+		// debug.Printf("opcode: 0x0f, %#02x\n", dc.opcodeAll)
 	}
 
-	dc.opcode = opcode
-
 	if dc.Info.OpId == 0 {
-		panic(fmt.Sprintf("No such opcode %#x", opcodeAll))
+		panic(fmt.Sprintf("No such opcode %#x", dc.opcodeAll))
 	}
 
 	if dc.Info.Flag&IFLAG_MODRM_REQUIRED != 0 {
@@ -279,13 +277,13 @@ func (dc *DisContext) parseOpcode() {
 		// Because of Go's address operator's limitation, we first find the
 		// index in the grpInsnInfoIndex, then use the index to access the
 		// grpInsnInfo array.
-		opcodeAll = opcodeAll<<8 + int(dc.Reg)
-		idx, ok := grpInsnInfoIndex[opcodeAll]
+		dc.opcodeAll = dc.opcodeAll<<8 + int(dc.Reg)
+		idx, ok := grpInsnInfoIndex[dc.opcodeAll]
 		if !ok {
-			panic(fmt.Sprintf("Group instruction key %#x lookup failed", opcodeAll))
+			panic(fmt.Sprintf("Group instruction key %#x lookup failed", dc.opcodeAll))
 		}
 		dc.Info = &(grpInsnInfo[idx])
-		// debug.Printf("Opcode: %#02x reg field %#x used as insn encoding, OpId: %#02x", opcodeAll, dc.Reg, dc.Info.OpId)
+		// debug.Printf("Opcode: %#02x reg field %#x used as insn encoding, OpId: %#02x", dc.opcodeAll, dc.Reg, dc.Info.OpId)
 	}
 	dc.parseOperand(opcode)
 }
