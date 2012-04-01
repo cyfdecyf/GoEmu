@@ -207,13 +207,14 @@ func TestNop(t *testing.T) {
 func TestCall(t *testing.T) {
 	testdata := []codeText{
 		codeText{[]byte{0xe8, 0x52, 0x9e, 0x0f, 0x00}, "call "},
+		codeText{[]byte{0xff, 0x15, 0x5c, 0xb7, 0x30, 0xc0}, "call *0xc030b75c"},
 	}
 	testDump(testdata, t)
 }
 
 // Disassemble the Linux kernel vmlinux file, see if the result matches
 // objdump's output.
-func TestLinuxKernel(t *testing.T) {
+func checkLinux(t *testing.T) {
 	// Open the dump result
 	df, e := os.Open("testdata/dump.vmlinux")
 	if e != nil {
@@ -252,4 +253,8 @@ func TestLinuxKernel(t *testing.T) {
 			t.Fatal("Disassemble file read error:", err)
 		}
 	}
+}
+
+func TestLinuxKernel(t *testing.T) {
+	checkLinux(t)
 }

@@ -318,21 +318,20 @@ func (dc *DisContext) parseOperand(opcode byte) {
 			// debug.Println("parseOperand opcode lowest 3 bits contains reg field")
 			dc.Reg = opcode >> 3 & 0x03
 
-		// Memory offset. Only used by mov (memory offset)
-		case OT_MOFFS8, OT_MOFFS_FULL:
+		case OT_MOFFS8, OT_MOFFS_FULL, // Memory offset. Only used by mov (0xa0 & 0xa2)
+			OT_RELC_FULL,  // Relative code offset
+			OT_MEM16_FULL: // call far and jmp far. Indirect target.
 			// According to Intel Manual, the size of the offset is affected
 			// by address-size attribute. The size of the data is either
 			// determinied by the instruction itself or operand-size
 			// attribute.
-			// debug.Println("parseOperand moffset")
+			// debug.Println("parseOperand moffset/recl/mem16_full")
 			dc.ImmOff = dc.readNBytes(dc.EffectiveAddressSize())
 
 		// Relative code offset
 		case OT_RELCB:
 			dc.ImmOff = int32(dc.nextByte())
 			// debug.Printf("RECB: %#x\n", dc.ImmOff)
-		case OT_RELC_FULL:
-			dc.ImmOff = dc.readNBytes(dc.EffectiveAddressSize())
 
 		// sign-extended 8-bit immediate
 		case OT_SEIMM8:

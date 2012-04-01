@@ -283,6 +283,10 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 		dump = dc.dumpRm(OpSizeLong, OpSizeLong)
 	}
 
+	switch dc.opcodeAll {
+	case 0xff02: // Call with indirect target
+		dump = "*" + dump
+	}
 	return
 }
 
