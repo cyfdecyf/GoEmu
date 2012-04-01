@@ -106,6 +106,13 @@ func TestPrefixParse(t *testing.T) {
 	if dc.Prefix&PrefixLOCK != PrefixLOCK {
 		t.Error("Prefix lock should not be dropped")
 	}
+
+	testdata := []codeText{
+		codeText{[]byte{0x64, 0x8b, 0x35, 0x40, 0xce, 0x2f, 0xc0}, "mov %fs:0xc02fce40,%esi"},
+		codeText{[]byte{0xf0, 0x83, 0x04, 0x24, 0x00}, "lock addl $0x0,(%esp)"},
+		codeText{[]byte{0xf3, 0xab}, "rep stos %eax,%es:(%edi)"},
+	}
+	testDump(testdata, t)
 }
 
 func TestArith(t *testing.T) {

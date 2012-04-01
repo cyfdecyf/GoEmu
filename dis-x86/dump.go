@@ -102,14 +102,15 @@ func (dc *DisContext) dumpRm(operandSize, addressSize byte) (dump string) {
 		return dc.formatReg(dc.Rm, operandSize)
 	}
 
+	dump = dc.dumpSegPrefix()
 	if addressSize == OpSizeFull {
 		addressSize = dc.EffectiveAddressSize()
 	}
 	switch addressSize {
 	case OpSizeLong:
-		dump = dc.dumpRm32bit()
+		dump += dc.dumpRm32bit()
 	case OpSizeWord:
-		dump = dc.dumpRm16bit()
+		dump += dc.dumpRm16bit()
 	}
 	return
 }
@@ -161,6 +162,7 @@ func (dc *DisContext) dumpSIB() string {
 }
 
 var insnSizeSuffix = []string{
+	OT_ACC8:    "",
 	OT_RM8:     "b",
 	OT_RM_FULL: "l",
 }
@@ -168,7 +170,7 @@ var insnSizeSuffix = []string{
 func (dc *DisContext) dumpInsn() (dump string) {
 	dump = InsnName[dc.Info.OpId]
 	switch dc.Info.OpId {
-	case Insn_Test:
+	case Insn_Test, Insn_Or:
 		// For test (0xf6), operand size is always 8bit. But when dumping
 		// ModRM with memory reference, we always use 32bit register. I guess
 		// this is why objdump appends the 'b' suffix, it makes us easier to
@@ -183,9 +185,10 @@ func (dc *DisContext) dumpInsn() (dump string) {
 		case OT_RM8:
 			dump += "b"
 		}
-	case Insn_Mov:
+	case Insn_Mov, Insn_Add:
 		if dc.Mod != 3 {
-			if dc.opcode == 0xc7 || dc.opcode == 0xc6 {
+			if dc.opcode == 0xc7 || dc.opcode == 0xc6 || // mov
+				dc.opcode == 0x83 { // add
 				dump += insnSizeSuffix[dc.Info.Operand[0]]
 			}
 		}
@@ -193,9 +196,30 @@ func (dc *DisContext) dumpInsn() (dump string) {
 	return dump + " "
 }
 
-func (dc *DisContext) dumpPrefix() string {
-	if dc.Prefix&(PrefixREPZ|PrefixREPNZ) != 0 {
-		return "rep "
+var prefixName = map[int]string{
+	PrefixREPNZ: "rep ",
+	PrefixREPZ:  "rep ",
+	PrefixCS:    "%cs:",
+	PrefixSS:    "%ss",
+	PrefixDS:    "%ds:",
+	PrefixES:    "%es:",
+	PrefixFS:    "%fs:",
+	PrefixGS:    "%gs:",
+	PrefixLOCK:  "lock ",
+}
+
+func (dc *DisContext) dumpRepLockPrefix() string {
+	name, ok := prefixName[dc.Prefix&(PrefixREPNZ|PrefixREPZ|PrefixLOCK)]
+	if ok {
+		return name
+	}
+	return ""
+}
+
+func (dc *DisContext) dumpSegPrefix() string {
+	name, ok := prefixName[dc.Prefix&(PrefixCS|PrefixDS|PrefixES|PrefixFS|PrefixGS)]
+	if ok {
+		return name
 	}
 	return ""
 }
@@ -203,7 +227,7 @@ func (dc *DisContext) dumpPrefix() string {
 func (dc *DisContext) DumpInsn() (dump string) {
 	var buf bytes.Buffer
 
-	buf.WriteString(dc.dumpPrefix())
+	buf.WriteString(dc.dumpRepLockPrefix())
 
 	if dumper, ok := specialInsnDump[dc.Info.OpId]; ok == true {
 		buf.WriteString(dumper(dc))
