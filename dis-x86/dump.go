@@ -132,7 +132,9 @@ func (dc *DisContext) dumpRm16bit() (dump string) {
 	if dc.DispSize != 0 {
 		dump = dc.dumpDisp()
 	}
-	panic("16bit modrm not supported now.")
+	if !(dc.Rm == 6 && dc.Mod == 0) {
+		dump += fmt.Sprintf("(%s)", dc.formatReg(dc.Rm, OpSizeWord))
+	}
 	return
 }
 
