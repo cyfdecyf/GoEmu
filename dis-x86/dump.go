@@ -163,7 +163,7 @@ func (dc *DisContext) dumpSIB() string {
 	return fmt.Sprintf("(%s)", base)
 }
 
-var insnSizeSuffix = []string{
+var insnSizeSuffix = map[byte]string{
 	OT_ACC8:       "",
 	OT_RM8:        "b",
 	OT_RM_FULL:    "l",
@@ -187,8 +187,27 @@ func (dc *DisContext) dumpInsn() (dump string) {
 			0xf700, 0xf702, 0xf703, 0xf704, 0xf705, 0xf706, 0xf707, // Unary Grp 3
 			0x0f0100, 0x0f0102, // sgdt, lgdt
 			0xc600, 0xc700: // Grp 11 (mov)
-			dump += insnSizeSuffix[dc.Info.Operand[0]]
+			suffix, ok := insnSizeSuffix[dc.Info.Operand[0]]
+			if ok {
+				dump += suffix
+			} else {
+				panic("operand size has no suffix")
+			}
 		}
+	}
+
+	// movsx (0x0fb6 & 0x0fb7) and movzx (0x0fbe & 0x0fbf) has fixed size src
+	// and destination operand. objdump differentiate the mnemonics for
+	// different size.
+	switch dc.opcodeAll {
+	case 0x0fb6:
+		dump = "movzbl"
+	case 0x0fb7:
+		dump = "movzwl"
+	case 0x0fbe:
+		dump = "movsbl"
+	case 0x0fbf:
+		dump = "movswl"
 	}
 
 	return dump + " "

@@ -4,5 +4,3 @@ s/^jne/jnz/
 s/^je/jz/
 s/^setne/setnz/
 s/^sete/setz/
-s/^movzbl/movzx/
-s/^movsbl/movsx/
