@@ -271,7 +271,7 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 
 	// Memory offset are always unsigned
 	case OT_MOFFS8, OT_MOFFS_FULL:
-		dump = fmt.Sprintf("%#x", uint32(dc.ImmOff))
+		dump = dc.dumpSegPrefix() + fmt.Sprintf("%#x", uint32(dc.ImmOff))
 
 	// Register
 	case OT_REG8, OT_IB_RB, OT_REG16, OT_REG32,
