@@ -106,6 +106,10 @@ func (dc *DisContext) dumpRm(operandSize, addressSize byte) (dump string) {
 	if addressSize == OpSizeFull {
 		addressSize = dc.EffectiveAddressSize()
 	}
+	// Output displacement
+	if dc.DispSize != 0 {
+		dump += dc.dumpDisp()
+	}
 	switch addressSize {
 	case OpSizeLong:
 		dump += dc.dumpRm32bit()
@@ -116,24 +120,19 @@ func (dc *DisContext) dumpRm(operandSize, addressSize byte) (dump string) {
 }
 
 func (dc *DisContext) dumpRm32bit() (dump string) {
-	// First output displacement
-	if dc.DispSize != 0 {
-		dump = dc.dumpDisp()
-	}
 	if dc.Scale != 0 {
 		dump += dc.dumpSIB()
 	} else if !(dc.Rm == 5 && dc.Mod == 0) {
-		dump += fmt.Sprintf("(%s)", dc.formatReg(dc.Rm, OpSizeLong))
+		// Using register to access memory, so the size should be the address size.
+		dump += fmt.Sprintf("(%s)", dc.formatReg(dc.Rm, dc.EffectiveAddressSize()))
 	}
 	return
 }
 
 func (dc *DisContext) dumpRm16bit() (dump string) {
-	if dc.DispSize != 0 {
-		dump = dc.dumpDisp()
-	}
 	if !(dc.Rm == 6 && dc.Mod == 0) {
-		dump += fmt.Sprintf("(%s)", dc.formatReg(dc.Rm, OpSizeWord))
+		// Using register to access memory, so the size should be the address size.
+		dump += fmt.Sprintf("(%s)", dc.formatReg(dc.Rm, dc.EffectiveAddressSize()))
 	}
 	return
 }
@@ -289,7 +288,7 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	// address, which depends on address-size attribute. RM16 is the same.
 	// Example: mov (0x88) -- RM8, mov (0x89) -- RM_FULL
 	case OT_RM8, OT_RM16, OT_RM_FULL, OT_MEM:
-		// debug.Println("dump rm")
+		// debug.Println("dump rm, address size:", dc.EffectiveAddressSize())
 		dump = dc.dumpRm(ot2size[operand], dc.EffectiveAddressSize())
 	// Messy x86, sigh. If the operand is register, use 32bit; if it's memory, use 16 bit.
 	// Example: mov (0x8c), when used as register, 32bit, but for memory, 16 bit memory

@@ -116,29 +116,14 @@ type Instruction struct {
 	// size should always be calculated according to the current protected
 	// mode and dflag. The disassembler can rely on this because it has no
 	// dynamic information about the CPU.
-	sizeOverride byte
+	addrSizeOverride bool
+	opSizeOverride   bool
 
 	// Displacement size is associated with ModR/M and SIB byte, can't easily
 	// encode the size information in operand type. So store it here.
 	DispSize byte
 
 	opcodeAll int // Include escape code, and reg field if needed. e.g. str has (0x0f0001)
-}
-
-func (insn *Instruction) insnOperandSize() byte {
-	return insn.sizeOverride & 0x0f
-}
-
-func (insn *Instruction) insnAddressSize() byte {
-	return insn.sizeOverride & 0x0f
-}
-
-func (insn *Instruction) setInsnOperandSize(v byte) {
-	insn.sizeOverride |= v
-}
-
-func (insn *Instruction) setInsnAddressSize(v byte) {
-	insn.sizeOverride |= v << 4
 }
 
 // Disassemble. Record information in each pass.
@@ -187,18 +172,25 @@ func (dc *DisContext) updateOperandAddressSize() {
 	dc.AddressSize = size
 }
 
+var overrideSize = [...]byte{
+	OpSizeLong: OpSizeWord,
+	OpSizeWord: OpSizeLong,
+}
+
 func (dc *DisContext) EffectiveOperandSize() (size byte) {
-	size = dc.OperandSize
-	if dc.sizeOverride != 0 && dc.insnOperandSize() != 0 {
-		size = dc.insnOperandSize()
+	if dc.opSizeOverride {
+		size = overrideSize[dc.OperandSize]
+	} else {
+		size = dc.OperandSize
 	}
 	return
 }
 
 func (dc *DisContext) EffectiveAddressSize() (size byte) {
-	size = dc.AddressSize
-	if dc.sizeOverride != 0 && dc.insnAddressSize() != 0 {
-		size = dc.insnAddressSize()
+	if dc.addrSizeOverride {
+		size = overrideSize[dc.AddressSize]
+	} else {
+		size = dc.AddressSize
 	}
 	return
 }
@@ -233,7 +225,8 @@ func (dc *DisContext) NextInsn() *DisContext {
 	dc.DispSize = 0
 	dc.Scale = 0
 	dc.Prefix = 0
-	dc.sizeOverride = 0
+	dc.addrSizeOverride = false
+	dc.opSizeOverride = false
 	dc.insnStart = dc.offset
 
 	dc.parsePrefix()
