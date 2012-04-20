@@ -291,9 +291,9 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 		// debug.Println("dump rm, address size:", dc.EffectiveAddressSize())
 		dump = dc.dumpRm(ot2size[operand], dc.EffectiveAddressSize())
 	// Messy x86, sigh. If the operand is register, use 32bit; if it's memory, use 16 bit.
-	// Example: mov (0x8c), when used as register, 32bit, but for memory, 16 bit memory
+	// Example: mov (0x8c), when used as register, 32bit, but for memory, the operand size is 16bit
 	case OT_RFULL_M16:
-		dump = dc.dumpRm(OpSizeLong, OpSizeWord)
+		dump = dc.dumpRm(dc.EffectiveOperandSize(), dc.EffectiveAddressSize())
 
 	case OT_MEM16_3264:
 		// What operand size should we use here?
