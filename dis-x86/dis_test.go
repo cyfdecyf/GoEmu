@@ -46,10 +46,7 @@ func (dc *DisContext) dumpInsnBinary() (dump string) {
 
 func checkDump1(dc *DisContext, expected string, t *testing.T) bool {
 	if dc == nil {
-		if expected != "" {
-			t.Fatal("EOF not handled correctly")
-		}
-		return true
+		return false
 	}
 	dump := dc.DumpInsn()
 	if dump != expected {
@@ -61,7 +58,11 @@ func checkDump1(dc *DisContext, expected string, t *testing.T) bool {
 }
 
 func checkDump(dc *DisContext, expected string, t *testing.T) {
-	if !checkDump1(dc, expected, t) {
+	if dc == nil {
+		if expected != "" {
+			t.Fatal("EOF not handled correctly")
+		}
+	} else if !checkDump1(dc, expected, t) {
 		t.FailNow()
 	}
 }
@@ -252,17 +253,17 @@ func checkLinux(t *testing.T) {
 	// Test instruction dump one by one
 	for i := 1; ; i++ {
 		line, isPrefix, err := dumpReader.ReadLine()
-		if isPrefix {
-			t.Fatal("Disassemble file has very long line")
-		}
-		if !checkDump1(dc.NextInsn(), string(line), t) {
-			t.Fatal("Failed parsing the", i, "instruction")
-		}
-
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			t.Fatal("Disassemble file read error:", err)
+		}
+		if isPrefix {
+			t.Fatal("Disassemble file has very long line")
+		}
+
+		if !checkDump1(dc.NextInsn(), string(line), t) {
+			t.Fatal("Failed parsing the", i, "instruction")
 		}
 	}
 }
