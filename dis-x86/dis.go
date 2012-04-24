@@ -65,6 +65,17 @@ const (
 )
 
 const (
+	Dr0 byte = iota
+	Dr1
+	Dr2
+	Dr3
+	Dr4
+	Dr5
+	Dr6
+	Dr7
+)
+
+const (
 	OpSizeNone byte = iota // zero means not defined
 	OpSizeByte
 	OpSizeWord

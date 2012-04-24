@@ -37,11 +37,24 @@ var regName8 = [...]string{
 	Bh: "bh",
 }
 
+// Control register
 var cregName = [...]string{
 	Cr0: "cr0",
 	Cr2: "cr2",
 	Cr3: "cr3",
 	Cr4: "cr4",
+}
+
+// Control register
+var dregName = [...]string{
+	Dr0: "db0",
+	Dr1: "db1",
+	Dr2: "db2",
+	Dr3: "db3",
+	Dr4: "db4",
+	Dr5: "db5",
+	Dr6: "db6",
+	Dr7: "db7",
 }
 
 // Return the string name of a register
@@ -292,6 +305,8 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	// Control register
 	case OT_CREG:
 		dump = "%" + cregName[dc.Reg]
+	case OT_DREG:
+		dump = "%" + dregName[dc.Reg]
 
 	// RM
 	// RM8 means the operand size is 8, but is the same with RM_FULL for
