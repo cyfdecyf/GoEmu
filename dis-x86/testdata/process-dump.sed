@@ -4,3 +4,4 @@ s/^jne/jnz/
 s/^je/jz/
 s/^setne/setnz/
 s/^sete/setz/
+s/^ud2a $/ud2 /

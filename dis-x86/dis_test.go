@@ -216,6 +216,13 @@ func TestCall(t *testing.T) {
 	testDump(testdata, t)
 }
 
+func TestMisc(t *testing.T) {
+	testdata := []codeText{
+		codeText{[]byte{0x0f, 0x0b}, "ud2 "},
+	}
+	testDump(testdata, t)
+}
+
 // Disassemble the Linux kernel vmlinux file, see if the result matches
 // objdump's output.
 func checkLinux(t *testing.T) {
