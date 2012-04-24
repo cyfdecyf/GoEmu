@@ -37,6 +37,13 @@ var regName8 = [...]string{
 	Bh: "bh",
 }
 
+var cregName = [...]string{
+	Cr0: "cr0",
+	Cr2: "cr2",
+	Cr3: "cr3",
+	Cr4: "cr4",
+}
+
 // Return the string name of a register
 func (dc *DisContext) formatReg(reg byte, size byte) (name string) {
 	if size == OpSizeFull {
@@ -282,6 +289,9 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	// Segment register
 	case OT_SREG, OT_SEG:
 		dump = "%" + segRegName[dc.Reg]
+	// Control register
+	case OT_CREG:
+		dump = "%" + cregName[dc.Reg]
 
 	// RM
 	// RM8 means the operand size is 8, but is the same with RM_FULL for
@@ -294,10 +304,13 @@ func (dc *DisContext) dumpOperand(operand byte) (dump string) {
 	// Example: mov (0x8c), when used as register, 32bit, but for memory, the operand size is 16bit
 	case OT_RFULL_M16:
 		dump = dc.dumpRm(dc.EffectiveOperandSize(), dc.EffectiveAddressSize())
-
 	case OT_MEM16_3264:
 		// What operand size should we use here?
 		dump = dc.dumpRm(OpSizeLong, OpSizeLong)
+	// For mov control register insn.
+	case OT_FREG32_64_RM:
+		// In non-64 bit mode, always use 32bit operand size
+		dump = dc.formatReg(dc.Rm, OpSizeLong)
 	}
 
 	switch dc.opcodeAll {

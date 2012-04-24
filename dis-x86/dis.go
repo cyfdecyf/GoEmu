@@ -58,6 +58,13 @@ const (
 )
 
 const (
+	Cr0 byte = 0
+	Cr2 byte = 2
+	Cr3 byte = 3
+	Cr4 byte = 4
+)
+
+const (
 	OpSizeNone byte = iota // zero means not defined
 	OpSizeByte
 	OpSizeWord
