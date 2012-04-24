@@ -346,7 +346,7 @@ func (dc *DisContext) parseOperand(opcode byte) {
 
 		// sign-extended 8-bit immediate
 		case OT_SEIMM8:
-			dc.ImmOff = int32(dc.nextByte())
+			dc.ImmOff = int32(int8(dc.nextByte()))
 		}
 	}
 }

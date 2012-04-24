@@ -117,6 +117,7 @@ func TestPrefixParse(t *testing.T) {
 
 func TestArith(t *testing.T) {
 	testdata := []codeText{
+		codeText{[]byte{0x83, 0x60, 0x0c, 0xfe}, "andl $0xfffffffe,0xc(%eax)"},
 		codeText{[]byte{0x00, 0x00}, "add %al,(%eax)"},
 		codeText{[]byte{0x00, 0x45, 0xf3}, "add %al,-0xd(%ebp)"},
 		codeText{[]byte{0x02, 0x54, 0x28, 0xe5}, "add -0x1b(%eax,%ebp,1),%dl"},
